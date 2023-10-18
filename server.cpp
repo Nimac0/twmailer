@@ -138,7 +138,7 @@ void *clientCommunication(void *data)
         perror("send failed");
         return NULL;
     }
-
+    memset(buffer, 0, sizeof buffer);
     do
     {
         size = recv(*current_socket, buffer, BUF - 1, 0);
@@ -183,26 +183,21 @@ void *clientCommunication(void *data)
 
         // DELETE
       
-        if (commandFound(message, "SEND"))
-        {
+        if (commandFound(message, "SEND")) {
             // sendMessage();
             if (send(*current_socket, "MESSAGE SENT", 13, 0) == -1)
             {
                 perror("send answer failed");
                 return NULL;
             }
-        }
-        else if (commandFound(message, "LIST"))
-        {
+        } else if (commandFound(message, "LIST")) {
             // listEmails();
             if (send(*current_socket, "LISTING ALL RECIEVED EMAILS", 30, 0) == -1)
             {
                 perror("send answer failed");
                 return NULL;
             }
-        }
-        else
-        {
+        } else {
             if (send(*current_socket, "OK", 3, 0) == -1)
             {
                 perror("send answer failed");

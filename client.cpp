@@ -100,7 +100,7 @@ int main(int argc, char** argv)
             {
                 buffer[size] = '\0';
                 printf("<< %s\n", buffer);
-                if ((strcmp("OK", buffer) || strcmp("MESSAGE SENT", buffer)) != 0)
+                if ((strcmp("OK", buffer) && strcmp("MESSAGE SENT", buffer)) != 0)
                 {
                     fprintf(stderr, "<< Server error occured, abort\n");
                     break;
