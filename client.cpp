@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <string>
 
 #define BUF 1024
 #define PORT 6543
@@ -72,13 +73,23 @@ int main(int argc, char** argv)
 
             if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
             {
-            size -= 2;
-            buffer[size] = 0;
+                size -= 2;
+                buffer[size] = 0;
             }
             else if (buffer[size - 1] == '\n')
             {
-            --size;
-            buffer[size] = 0;
+                --size;
+                buffer[size] = 0;
+            }
+
+            if(strcmp(buffer, "SEND") == 0){
+                
+            } else if(strcmp(buffer, "LIST") == 0){
+
+            } else if(strcmp(buffer, "READ") == 0){
+                
+            } else if(strcmp(buffer, "DEL") == 0){
+    
             }
             isQuit = strcmp(buffer, "QUIT") == 0;
 
@@ -91,18 +102,19 @@ int main(int argc, char** argv)
             size = recv(create_socket, buffer, BUF - 1, 0);
             if (size == -1)
             {
-            perror("recv error");
-            break;
+                perror("recv error");
+                break;
             }
             else if (size == 0)
             {
-            printf("Server closed remote socket\n");
-            break;
+                printf("Server closed remote socket\n");
+                break;
             }
             else
             {
-            buffer[size] = '\0';
-            printf("<< %s\n", buffer);
+                buffer[size] = '\0';
+                printf("<< %s\n", buffer);
+
             if (strcmp("OK", buffer) != 0)
             {
                 fprintf(stderr, "<< Server error occured, abort\n");

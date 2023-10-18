@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <string>
 
 #define BUF 1024
 #define PORT 6543
@@ -17,6 +18,11 @@ int new_socket = -1;
 
 void *clientCommunication(void *data);
 void signalHandler(int sig);
+//createInbox()
+//sendmsg()
+//readmsg(int index)
+//listmsg()
+//del(int index)
 
 int main(int argc, char** argv)
 {
