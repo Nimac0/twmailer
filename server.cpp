@@ -8,6 +8,9 @@
 #include <string.h>
 #include <signal.h>
 #include <string>
+#include <regex>
+#include <iostream>
+#include <vector>
 
 #include <string>
 
@@ -20,6 +23,7 @@ int new_socket = -1;
 
 void *clientCommunication(void *data);
 void signalHandler(int sig);
+std::string processMsg(std::string clientRequest);
 //createInbox()
 //sendmsg()
 //readmsg(int index)
@@ -138,7 +142,9 @@ void *clientCommunication(void *data)
         perror("send failed");
         return NULL;
     }
+
     memset(buffer, 0, sizeof buffer);
+
     do
     {
         size = recv(*current_socket, buffer, BUF - 1, 0);
@@ -162,32 +168,39 @@ void *clientCommunication(void *data)
         }
 
         trimEnd(&buffer[0], &size);
-        printf("Message received: %s\n", buffer);
-        printf("after received\n");
+        printf("Message received:\n %s\n", buffer);
+
         std::string message(buffer);
       
         if (commandFound(message, "SEND")) {
-            // sendMessage();
-            printf("this should appear\n"); //debug
-            if (send(*current_socket, "MESSAGE SENT", 13, 0) == -1)
-            {
+            if (send(*current_socket, "MESSAGE SENT", 13, 0) == -1) {
+
                 perror("send answer failed");
                 return NULL;
             }
+
+            if(processMsg(message).compare(" ") == 0)
+            {
+                std::cout << "DEBUG 1: " << message + '\n';
+                std::cout << "DEBUG 2: " << processMsg(message);
+                perror("error in data sent, couldnt process");
+                return NULL;
+            }
+
+            std::cout << "TEST SUCCESSFUL";
+
         } else if (commandFound(message, "LIST")) {
             // listEmails();
-            if (send(*current_socket, "LISTING ALL RECIEVED EMAILS", 30, 0) == -1)
-            {
+            if (send(*current_socket, "LISTING ALL RECIEVED EMAILS", 30, 0) == -1) {
                 perror("send answer failed");
                 return NULL;
             }
-        } else {
-            if (send(*current_socket, "OK", 3, 0) == -1)
-            {
-                perror("send answer failed");
-                return NULL;
-            }
+        } 
+        if (send(*current_socket, "OK", 3, 0) == -1) {
+            perror("send answer failed");
+            return NULL;
         }
+
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
 
     if (*current_socket != -1)
@@ -260,8 +273,6 @@ void trimEnd(char* buffer, int* size)
 
 bool commandFound(const std::string message, const std::string command)
 {
-    printf("enter here?\n"); //debug
-    // TODO: only for first ~5 characters of the message: there is no command longer than that
     std::string cmd = "";
     for (auto &ch : message)
     {
@@ -271,7 +282,30 @@ bool commandFound(const std::string message, const std::string command)
         else 
             cmd.push_back(ch);
     }
-    int test = (cmd == command);
-    printf("%d\n", test); //debug
     return (cmd == command);
+}
+
+std::string processMsg(std::string clientRequest)
+{
+    size_t pos = 0;
+    std::vector <std::string> dataToBeProcessed;
+    std::cout << clientRequest;
+
+    for(int i = 0; i < 3; i++) {
+        if((pos = clientRequest.find('\n')) == std::string::npos) {
+            std::cout << "couldnt parse data";
+            return " ";
+        }
+        std::cout << "current state of string:" << clientRequest << '\n';
+        dataToBeProcessed.push_back(clientRequest.substr(0, pos));
+        clientRequest.erase(0, pos + 1);
+    }
+    
+    std::regex validUser("[a-z0-9]+"); //double check incase of malicious user skipping client and accessing server directly
+    
+    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
+    && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8) {
+        return dataToBeProcessed[1] + '\n' + dataToBeProcessed[2] + '\n' + clientRequest;
+    }
+    return " ";
 }

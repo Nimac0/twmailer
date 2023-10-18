@@ -17,6 +17,7 @@
 void trimEnd(char* buffer, int* size);
 std::string createMsg();
 bool checkUserValidity(std::string username);
+std::string requestList();
 
 int main(int argc, char** argv)
 {
@@ -74,18 +75,26 @@ int main(int argc, char** argv)
     do
     {
         // printActionsMenu();
+        memset(buffer, 0, sizeof buffer);
         printf(">> ");
         if (fgets(buffer, BUF, stdin) != NULL)
         {
             int size = strlen(buffer);
-
             trimEnd(&buffer[0], &size);
-
+            
             if(!strcmp(buffer, "SEND")){
                 strcpy(buffer, createMsg().data());
+                printf("%s", buffer);
+            }
+
+            if(!strcmp(buffer, "LIST")){
+                strcpy(buffer, requestList().data());
             }
 
             isQuit = strcmp(buffer, "QUIT") == 0;
+            
+            size = strlen(buffer);
+            trimEnd(&buffer[0], &size);
 
             if ((send(create_socket, buffer, size, 0)) == -1) 
             {
@@ -108,7 +117,7 @@ int main(int argc, char** argv)
             {
                 buffer[size] = '\0';
                 printf("<< %s\n", buffer);
-                if ((strcmp("OK", buffer) && strcmp("MESSAGE SENT", buffer)) != 0)
+                if ((strcmp("MESSAGE SENT", buffer)) != 0 && (strcmp("OK", buffer)) != 0)
                 {
                     fprintf(stderr, "<< Server error occured, abort\n");
                     break;
@@ -140,6 +149,15 @@ void printActionsMenu()
     printf("Possible actions:\nSEND\nLIST\nQUIT\n");
 }
 */
+std::string requestList()
+{
+    std::string username;
+    std::cout << "enter username to see a list of mails";
+    std::cin >> username;
+    
+    return std::string("LIST") + username;
+}
+
 std::string createMsg()
 {
     std::string sender;
@@ -166,12 +184,12 @@ std::string createMsg()
             std::cout << "subject too long, must be max 80 chars";
             continue;
         }
+
         std::cout << "Input Message(end with .\\n): ";
         std::cin >> message;
 
         valid = true;
     }while(!valid);
-
 
     return std::string("SEND") + "\n" + sender + "\n" + recipient + "\n" + subject + "\n" + message + "\n";
 }
