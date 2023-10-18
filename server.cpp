@@ -163,28 +163,12 @@ void *clientCommunication(void *data)
 
         trimEnd(&buffer[0], &size);
         printf("Message received: %s\n", buffer);
-
+        printf("after received\n");
         std::string message(buffer);
-
-        // SEND
-        // Check if the usernames are correct --> client (parsing)
-        // If recipient exists, go into corresponding file (filesystem)
-        // Index file --> add new message
-        // If !exists --> create new folder
-        // create index file, add message
-        // send client --> ok
-
-        // LIST
-        // go through directories, check if the user is there
-        // if you find the user file, list contents (third line) --> ok
-        // if not --> error
-
-        // READ
-
-        // DELETE
       
         if (commandFound(message, "SEND")) {
             // sendMessage();
+            printf("this should appear\n"); //debug
             if (send(*current_socket, "MESSAGE SENT", 13, 0) == -1)
             {
                 perror("send answer failed");
@@ -276,14 +260,18 @@ void trimEnd(char* buffer, int* size)
 
 bool commandFound(const std::string message, const std::string command)
 {
+    printf("enter here?\n"); //debug
     // TODO: only for first ~5 characters of the message: there is no command longer than that
     std::string cmd = "";
     for (auto &ch : message)
     {
+        printf("%c\n", ch);
         if (ch == '\n' || ch == '\0')
             break;
         else 
             cmd.push_back(ch);
     }
+    int test = (cmd == command);
+    printf("%d\n", test); //debug
     return (cmd == command);
 }

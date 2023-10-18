@@ -7,12 +7,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <string>
+#include <iostream>
+#include <regex>
 
 #define BUF 1024
 #define PORT 6543
 
 // void printActionsMenu();
 void trimEnd(char* buffer, int* size);
+std::string createMsg();
+bool checkUserValidity(std::string username);
 
 int main(int argc, char** argv)
 {
@@ -77,6 +81,10 @@ int main(int argc, char** argv)
 
             trimEnd(&buffer[0], &size);
 
+            if(!strcmp(buffer, "SEND")){
+                strcpy(buffer, createMsg().data());
+            }
+
             isQuit = strcmp(buffer, "QUIT") == 0;
 
             if ((send(create_socket, buffer, size, 0)) == -1) 
@@ -132,6 +140,48 @@ void printActionsMenu()
     printf("Possible actions:\nSEND\nLIST\nQUIT\n");
 }
 */
+std::string createMsg()
+{
+    std::string sender;
+    std::string recipient;
+    std::string subject;
+    std::string message;
+
+    bool valid = false;
+    
+    do{   
+        std::cout << "Input Sender: ";
+        std::cin >> sender;
+        std::cout << "Input Recipient: ";
+        std::cin >> recipient;
+
+        if(!checkUserValidity(sender) || !checkUserValidity(recipient)){
+            std::cout << "invalid sender or recipient (user cant be longer than 8 chars and must be lowercase and numbers)";
+            continue;
+        }
+
+        std::cout << "Input Subject(max 80 chars): ";
+        std::cin >> subject;
+        if(subject.size() > 80){
+            std::cout << "subject too long, must be max 80 chars";
+            continue;
+        }
+        std::cout << "Input Message(end with .\\n): ";
+        std::cin >> message;
+
+        valid = true;
+    }while(!valid);
+
+
+    return std::string("SEND") + "\n" + sender + "\n" + recipient + "\n" + subject + "\n" + message + "\n";
+}
+
+bool checkUserValidity(std::string username)
+{
+    std::regex validUser("[a-z0-9]+");
+    return (std::regex_match(username, validUser) && username.size() <= 8);
+}
+
 void trimEnd(char* buffer, int* size)
 {
     if (buffer[*size - 2] == '\r' && buffer[*size - 1] == '\n')
