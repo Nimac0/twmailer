@@ -11,6 +11,9 @@
 #define BUF 1024
 #define PORT 6543
 
+// void printActionsMenu();
+void trimEnd(char* buffer, int* size);
+
 int main(int argc, char** argv)
 {
     int create_socket;
@@ -66,31 +69,14 @@ int main(int argc, char** argv)
 
     do
     {
+        // printActionsMenu();
         printf(">> ");
         if (fgets(buffer, BUF, stdin) != NULL)
         {
             int size = strlen(buffer);
 
-            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
-            {
-                size -= 2;
-                buffer[size] = 0;
-            }
-            else if (buffer[size - 1] == '\n')
-            {
-                --size;
-                buffer[size] = 0;
-            }
+            trimEnd(&buffer[0], &size);
 
-            if(strcmp(buffer, "SEND") == 0){
-                
-            } else if(strcmp(buffer, "LIST") == 0){
-
-            } else if(strcmp(buffer, "READ") == 0){
-                
-            } else if(strcmp(buffer, "DEL") == 0){
-    
-            }
             isQuit = strcmp(buffer, "QUIT") == 0;
 
             if ((send(create_socket, buffer, size, 0)) == -1) 
@@ -114,12 +100,11 @@ int main(int argc, char** argv)
             {
                 buffer[size] = '\0';
                 printf("<< %s\n", buffer);
-
-            if (strcmp("OK", buffer) != 0)
-            {
-                fprintf(stderr, "<< Server error occured, abort\n");
-                break;
-            }
+                if ((strcmp("OK", buffer) || strcmp("MESSAGE SENT", buffer)) != 0)
+                {
+                    fprintf(stderr, "<< Server error occured, abort\n");
+                    break;
+                }
             }
         }
     } while (!isQuit);
@@ -139,4 +124,24 @@ int main(int argc, char** argv)
     }
 
     return EXIT_SUCCESS;
+}
+
+/*
+void printActionsMenu()
+{
+    printf("Possible actions:\nSEND\nLIST\nQUIT\n");
+}
+*/
+void trimEnd(char* buffer, int* size)
+{
+    if (buffer[*size - 2] == '\r' && buffer[*size - 1] == '\n')
+    {
+        *size -= 2;
+        buffer[*size] = 0;
+    }
+    else if (buffer[*size - 1] == '\n')
+    {
+        --*size;
+        buffer[*size] = 0;
+    }
 }
