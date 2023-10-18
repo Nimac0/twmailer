@@ -84,7 +84,6 @@ int main(int argc, char** argv)
             
             if(!strcmp(buffer, "SEND")){
                 strcpy(buffer, createMsg().data());
-                printf("%s", buffer);
             }
 
             if(!strcmp(buffer, "LIST")){
@@ -169,9 +168,9 @@ std::string createMsg()
     
     do{   
         std::cout << "Input Sender: ";
-        std::cin >> sender;
+        std::getline(std::cin, sender);
         std::cout << "Input Recipient: ";
-        std::cin >> recipient;
+        std::getline(std::cin, recipient);
 
         if(!checkUserValidity(sender) || !checkUserValidity(recipient)){
             std::cout << "invalid sender or recipient (user cant be longer than 8 chars and must be lowercase and numbers)";
@@ -179,14 +178,14 @@ std::string createMsg()
         }
 
         std::cout << "Input Subject(max 80 chars): ";
-        std::cin >> subject;
+        std::getline(std::cin, subject);
         if(subject.size() > 80){
             std::cout << "subject too long, must be max 80 chars";
             continue;
         }
 
         std::cout << "Input Message(end with .\\n): ";
-        std::cin >> message;
+        std::getline(std::cin, message);
 
         valid = true;
     }while(!valid);

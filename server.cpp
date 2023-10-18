@@ -168,7 +168,7 @@ void *clientCommunication(void *data)
         }
 
         trimEnd(&buffer[0], &size);
-        printf("Message received:\n %s\n", buffer);
+        printf("Message received:\n%s\n", buffer);
 
         std::string message(buffer);
       
@@ -181,8 +181,6 @@ void *clientCommunication(void *data)
 
             if(processMsg(message).compare(" ") == 0)
             {
-                std::cout << "DEBUG 1: " << message + '\n';
-                std::cout << "DEBUG 2: " << processMsg(message);
                 perror("error in data sent, couldnt process");
                 return NULL;
             }
@@ -276,7 +274,6 @@ bool commandFound(const std::string message, const std::string command)
     std::string cmd = "";
     for (auto &ch : message)
     {
-        printf("%c\n", ch);
         if (ch == '\n' || ch == '\0')
             break;
         else 
@@ -289,14 +286,12 @@ std::string processMsg(std::string clientRequest)
 {
     size_t pos = 0;
     std::vector <std::string> dataToBeProcessed;
-    std::cout << clientRequest;
 
     for(int i = 0; i < 3; i++) {
         if((pos = clientRequest.find('\n')) == std::string::npos) {
             std::cout << "couldnt parse data";
             return " ";
         }
-        std::cout << "current state of string:" << clientRequest << '\n';
         dataToBeProcessed.push_back(clientRequest.substr(0, pos));
         clientRequest.erase(0, pos + 1);
     }
