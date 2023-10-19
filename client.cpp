@@ -94,7 +94,6 @@ int main(int argc, char** argv)
             
             size = strlen(buffer);
             trimEnd(&buffer[0], &size);
-
             if ((send(create_socket, buffer, size, 0)) == -1) 
             {
                 perror("send error");
@@ -116,7 +115,7 @@ int main(int argc, char** argv)
             {
                 buffer[size] = '\0';
                 printf("<< %s\n", buffer);
-                if ((strcmp("MESSAGE SENT", buffer)) != 0 && (strcmp("OK", buffer)) != 0)
+                if ((strcmp("MESSAGE SENT", buffer)) != 0 && (strcmp("OK", buffer)) != 0 && (strcmp("LISTING ALL RECIEVED EMAILS", buffer)) != 0)
                 {
                     fprintf(stderr, "<< Server error occured, abort\n");
                     break;
@@ -151,10 +150,10 @@ void printActionsMenu()
 std::string requestList()
 {
     std::string username;
-    std::cout << "enter username to see a list of mails";
-    std::cin >> username;
+    std::cout << "enter username to see a list of mails: ";
+    std::getline(std::cin, username);
     
-    return std::string("LIST") + username;
+    return std::string("LIST") + '\n' + username;
 }
 
 std::string createMsg()
@@ -190,7 +189,7 @@ std::string createMsg()
         valid = true;
     }while(!valid);
 
-    return std::string("SEND") + "\n" + sender + "\n" + recipient + "\n" + subject + "\n" + message + "\n";
+    return std::string("SEND") + "\n" + sender + "\n" + recipient + "\n" + subject + "\n" + message + "\n.\n";
 }
 
 bool checkUserValidity(std::string username)

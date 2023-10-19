@@ -143,11 +143,11 @@ void *clientCommunication(void *data)
         return NULL;
     }
 
-    memset(buffer, 0, sizeof buffer);
-
     do
-    {
+    {   
+        memset(buffer, 0, sizeof buffer);
         size = recv(*current_socket, buffer, BUF - 1, 0);
+
         if (size == -1)
         {
             if (abortRequested)
@@ -166,7 +166,6 @@ void *clientCommunication(void *data)
             printf("Client closed remote socket\n");
             break;
         }
-
         trimEnd(&buffer[0], &size);
         printf("Message received:\n%s\n", buffer);
 
@@ -185,7 +184,7 @@ void *clientCommunication(void *data)
                 return NULL;
             }
 
-            std::cout << "TEST SUCCESSFUL";
+            std::cout << "TEST SUCCESSFUL" << std::endl;
 
         } else if (commandFound(message, "LIST")) {
             // listEmails();
@@ -193,6 +192,7 @@ void *clientCommunication(void *data)
                 perror("send answer failed");
                 return NULL;
             }
+            std::cout << "List works" << std::endl;
         } 
         if (send(*current_socket, "OK", 3, 0) == -1) {
             perror("send answer failed");
