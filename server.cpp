@@ -38,10 +38,8 @@ bool userExists(const std::string user);
 bool addMsg(const std::string bigString, const std::string user);
 bool createTextFile(fs::path path, std::string content);
 std::fstream& GotoLine(std::fstream& file, unsigned int num);
-//createInbox()
-//sendmsg()
+
 //readmsg(int index)
-//listmsg()
 //del(int index)
 
 int main(int argc, char** argv)
@@ -181,8 +179,7 @@ void *clientCommunication(void *data)
         printf("Message received:\n%s\n", buffer);
 
         std::string message(buffer);
-
-        // Different responses depending on command
+      
         if (commandFound(message, "SEND")) {
             sendMsg(message);
             /*
@@ -320,11 +317,11 @@ std::string processMsg(std::string clientRequest)
 
 void sendMsg(const std::string message)
 {
-    if (!(processMsg(message).compare(" ") == 0))
+    if ((!processMsg(message).compare(" ") == 0))
     {
         std::string uname = getUsername(message, "SEND");
         if (createDirectory(uname))
-            addMsg(message, uname);
+            addMsg(processMsg(message), uname);
     }
 }
 
@@ -342,7 +339,7 @@ std::string listEmails(const std::string user)
     {
         for (auto const& dir_entry : fs::directory_iterator(userPath))
         {
-            if (dir_entry.is_regular_file() && !(dir_entry == (userPath / "index.txt")))
+            if (dir_entry.is_regular_file() && !(dir_entry == (userPath/"index.txt")))
             {
                 cnt++;
 
@@ -350,7 +347,7 @@ std::string listEmails(const std::string user)
                 std::fstream inFile(dir_entry.path());
                 if (!inFile.is_open())
                     return "ERR";
-                // Save subject in subjectList vector
+// Save subject in subjectList vector
                 std::string subject; 
                 GotoLine(inFile, 4) >> subject;
                 subjectList.push_back(subject + " " + dir_entry.path().filename().string());
@@ -391,11 +388,11 @@ std::string getUsername(std::string message, const std::string command)
     std::regex validUser("[a-z0-9]+"); //double check incase of malicious user skipping client and accessing server directly
     if (command == "SEND")
     {
-        if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
-        && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8) 
-            return dataToBeProcessed[2];
+    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
+    && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8)
+        return dataToBeProcessed[2];
     }
-    else if (command == "LIST")
+else if (command == "LIST")
     {
         if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
             return dataToBeProcessed[1];   
@@ -443,6 +440,10 @@ std::string getUsername(std::string message, const std::string command)
 
 bool createDirectory(const std::string recipientName)
 {
+    if(!fs::exists("spool"))
+    {
+        fs::create_directory("spool");
+    }
     if (!userExists(recipientName))
     {
         fs::path basePath = "spool";
@@ -498,7 +499,7 @@ bool addMsg(const std::string bigString, const std::string user)
 
 bool createTextFile(fs::path path, std::string content)
 {
-    fs::path filePath = "spool" / path;
+    fs::path filePath = "spool"/path;
     filePath.replace_extension(".txt");
     std::ofstream textFile(path);
     

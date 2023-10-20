@@ -18,6 +18,8 @@ void trimEnd(char* buffer, int* size);
 std::string createMsg();
 bool checkUserValidity(std::string username);
 std::string requestList();
+std::string requestRead();
+std::string requestDel();
 
 int main(int argc, char** argv)
 {
@@ -90,6 +92,14 @@ int main(int argc, char** argv)
                 strcpy(buffer, requestList().data());
             }
 
+            if(!strcmp(buffer, "READ")){
+                strcpy(buffer, requestRead().data());
+            }
+
+            if(!strcmp(buffer, "DEL")){
+                strcpy(buffer, requestDel().data());
+            }
+
             isQuit = strcmp(buffer, "QUIT") == 0;
             
             size = strlen(buffer);
@@ -156,6 +166,30 @@ std::string requestList()
     return std::string("LIST") + '\n' + username;
 }
 
+std::string requestRead()
+{
+    std::string username;
+    std::cout << "enter username: ";
+    std::getline(std::cin, username);
+    std::string msgNum;
+    std::cout << "enter number of message you want to read: ";
+    std::getline(std::cin, msgNum);
+    
+    return std::string("READ") + '\n' + username + '\n' + msgNum;
+}
+
+std::string requestDel()
+{
+    std::string username;
+    std::cout << "enter username: ";
+    std::getline(std::cin, username);
+    std::string msgNum;
+    std::cout << "enter number of message you want to delete: ";
+    std::getline(std::cin, msgNum);
+    
+    return std::string("DEL") + '\n' + username + '\n' + msgNum;
+}
+
 std::string createMsg()
 {
     std::string sender;
@@ -184,12 +218,17 @@ std::string createMsg()
         }
 
         std::cout << "Input Message(end with .\\n): ";
-        std::getline(std::cin, message);
-
+        while(std::getline(std::cin, message))
+        {     
+            if(message == "."){
+                message + "\n";
+                break;
+            }
+        }
         valid = true;
     }while(!valid);
 
-    return std::string("SEND") + "\n" + sender + "\n" + recipient + "\n" + subject + "\n" + message + "\n.\n";
+    return std::string("SEND") + "\n" + sender + "\n" + recipient + "\n" + subject + "\n" + message + "\n";
 }
 
 bool checkUserValidity(std::string username)
