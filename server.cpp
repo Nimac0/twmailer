@@ -31,7 +31,7 @@ bool commandFound(const std::string message, const std::string command);
 std::string processMsg(std::string clientRequest);
 std::string listEmails(const std::string user);
 void sendMsg(const std::string message);
-std::string getUsername(std::string message);
+std::string getUsername(std::string message, const std::string command);
 bool userExists(const std::string user);
 bool createDirectory(const std::string recipientName);
 bool userExists(const std::string user);
@@ -181,7 +181,8 @@ void *clientCommunication(void *data)
         printf("Message received:\n%s\n", buffer);
 
         std::string message(buffer);
-      
+
+        // Different responses depending on command
         if (commandFound(message, "SEND")) {
             sendMsg(message);
             /*
@@ -198,21 +199,19 @@ void *clientCommunication(void *data)
 
             std::cout << "TEST SUCCESSFUL" << std::endl;
 
-        } else if (commandFound(message, "LIST")) {
-            
-            std::string emailList = listEmails(getUsername(message));
+        } 
+        else if (commandFound(message, "LIST")) {
+            std::string emailList = listEmails(getUsername(message, "LIST"));
 
             if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) {
                 perror("send answer failed");
                 return NULL;
             }
-            std::cout << "List works" << std::endl;
         } 
         if (send(*current_socket, "OK", 3, 0) == -1) {
             perror("send answer failed");
             return NULL;
         }
-
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
 
     if (*current_socket != -1)
@@ -323,7 +322,7 @@ void sendMsg(const std::string message)
 {
     if (!(processMsg(message).compare(" ") == 0))
     {
-        std::string uname = getUsername(message);
+        std::string uname = getUsername(message, "SEND");
         if (createDirectory(uname))
             addMsg(message, uname);
     }
@@ -333,53 +332,55 @@ std::string listEmails(const std::string user)
 {
     // Count of msgs (0 is no message or user unknown)
     int cnt = 0;
-    std::vector<std::string> subjectList;
 
-    // TODO: More elegant solution for paths
     fs::path basePath = "spool";
-    fs::path userPath = basePath/user;
+    fs::path userPath = basePath / user;
+
+    std::vector<std::string> subjectList;
 
     try
     {
-        for (auto const& dir_entry : fs::directory_iterator{userPath})
+        for (auto const& dir_entry : fs::directory_iterator(userPath))
         {
-            if (dir_entry.is_regular_file() && !(dir_entry == (userPath/"index.txt")))
+            if (dir_entry.is_regular_file() && !(dir_entry == (userPath / "index.txt")))
             {
                 cnt++;
 
-                std::fstream file;
-                file.open(dir_entry.path());
-
-                if (!file.is_open())
+                // Open current file
+                std::fstream inFile(dir_entry.path());
+                if (!inFile.is_open())
                     return "ERR";
-
+                // Save subject in subjectList vector
                 std::string subject; 
-                std::getline(GotoLine(file, 3), subject);
+                GotoLine(inFile, 4) >> subject;
                 subjectList.push_back(subject + " " + dir_entry.path().filename().string());
             }
         }
+
         // Turn vector into string
-        // TODO: Could also be turned into a message stream
         std::string message = std::to_string(cnt);
         for (const auto& subject : subjectList)
         {
-            message += subject + "\n";
+            message += "\n" + subject;
         }
         return message;
     }
     catch (const std::exception& e)
     {
-        return "ERR:" + std::string(e.what());
+        return "ERR: " + std::string(e.what());
     }
 }
 
-std::string getUsername(std::string message)
+/*
+std::string getUsername(std::string message, const std::string command)
 {
     size_t pos = 0;
     std::vector <std::string> dataToBeProcessed;
 
-    for(int i = 0; i < 3; i++) {
-        if((pos = message.find('\n')) == std::string::npos) {
+    for(int i = 0; i < (command == "LIST" ? 2 : 3); i++) 
+    {
+        if((pos = message.find('\n')) == std::string::npos) 
+        {
             std::cout << "couldnt parse data";
             return " ";
         }
@@ -388,10 +389,54 @@ std::string getUsername(std::string message)
     }
     
     std::regex validUser("[a-z0-9]+"); //double check incase of malicious user skipping client and accessing server directly
-    
-    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
-    && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8) {
-        return dataToBeProcessed[2];
+    if (command == "SEND")
+    {
+        if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
+        && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8) 
+            return dataToBeProcessed[2];
+    }
+    else if (command == "LIST")
+    {
+        if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
+            return dataToBeProcessed[1];   
+    }
+    return " ";
+}
+*/
+
+std::string getUsername(std::string message, const std::string command)
+{
+    std::stringstream ss(message);
+    std::string line;
+    std::vector<std::string> dataToBeProcessed;
+
+    while (std::getline(ss, line, '\n'))
+    {
+        dataToBeProcessed.push_back(line);
+    }
+
+    if (dataToBeProcessed.size() < (command == "LIST" ? 2 : 3))
+    {
+        std::cout << "couldn't parse data" << std::endl;
+        return " ";
+    }
+
+    std::regex validUser("[a-z0-9]+");
+
+    if (command == "SEND")
+    {
+        if (std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8 &&
+            std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8)
+        {
+            return dataToBeProcessed[2];
+        }
+    }
+    else if (command == "LIST")
+    {
+        if (std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
+        {
+            return dataToBeProcessed[1];
+        }
     }
     return " ";
 }
@@ -433,9 +478,10 @@ bool addMsg(const std::string bigString, const std::string user)
         return false;
     std::string lastEntry;
     std::getline(inFile, lastEntry); 
+
+    // Create message text file
     fs::path basePath = "spool";
     fs::path messageFilePath = basePath / user / (lastEntry + ".txt");
-
     if (createTextFile(messageFilePath, bigString))
     {
         // Rewrite index with the newly incremented latest entry
@@ -452,7 +498,7 @@ bool addMsg(const std::string bigString, const std::string user)
 
 bool createTextFile(fs::path path, std::string content)
 {
-    fs::path filePath = "spool"/path;
+    fs::path filePath = "spool" / path;
     filePath.replace_extension(".txt");
     std::ofstream textFile(path);
     
