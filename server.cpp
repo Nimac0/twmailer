@@ -321,11 +321,11 @@ std::string processMsg(std::string clientRequest)
 
 void sendMsg(const std::string message)
 {
-    if (!(processMsg(message).compare(" ") == 0))
+    if ((!processMsg(message).compare(" ") == 0))
     {
         std::string uname = getUsername(message);
         if (createDirectory(uname))
-            addMsg(message, uname);
+            addMsg(processMsg(message), uname);
     }
 }
 
@@ -398,6 +398,10 @@ std::string getUsername(std::string message)
 
 bool createDirectory(const std::string recipientName)
 {
+    if(!fs::exists("spool"))
+    {
+        fs::create_directory("spool");
+    }
     if (!userExists(recipientName))
     {
         fs::path basePath = "spool";
