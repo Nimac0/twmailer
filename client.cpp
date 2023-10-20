@@ -13,6 +13,16 @@
 #define BUF 1024
 #define PORT 6543
 
+enum cmd
+{
+    DEFAULT = 0,
+    SEND,
+    LIST,
+    READ,
+    DEL,
+    QUIT
+};
+
 // void printActionsMenu();
 void trimEnd(char* buffer, int* size);
 std::string createMsg();
@@ -27,7 +37,7 @@ int main(int argc, char** argv)
     char buffer[BUF];
     struct sockaddr_in address;
     int size;
-    int isQuit;
+    cmd cmd = DEFAULT;
 
     if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
@@ -85,22 +95,28 @@ int main(int argc, char** argv)
             trimEnd(&buffer[0], &size);
             
             if(!strcmp(buffer, "SEND")){
+                cmd = SEND;
                 strcpy(buffer, createMsg().data());
             }
 
             if(!strcmp(buffer, "LIST")){
+                cmd = LIST;
                 strcpy(buffer, requestList().data());
             }
 
             if(!strcmp(buffer, "READ")){
+                cmd = READ;
                 strcpy(buffer, requestRead().data());
             }
 
             if(!strcmp(buffer, "DEL")){
+                cmd = DEL;
                 strcpy(buffer, requestDel().data());
             }
 
-            isQuit = strcmp(buffer, "QUIT") == 0;
+            if(!strcmp(buffer, "QUIT")){
+                cmd = QUIT;
+            }
             
             size = strlen(buffer);
             trimEnd(&buffer[0], &size);
@@ -121,18 +137,44 @@ int main(int argc, char** argv)
                 printf("Server closed remote socket\n");
                 break;
             }
-            else
-            {
-                buffer[size] = '\0';
-                printf("<< %s\n", buffer);
-                if ((strcmp("MESSAGE SENT", buffer)) != 0 && (strcmp("OK", buffer)) != 0 && (strcmp("LISTING ALL RECIEVED EMAILS", buffer)) != 0)
+            buffer[size] = '\0';
+            printf("<< %s", buffer);
+            if(cmd == SEND || cmd == DEL) {
+                if((strcmp("OK\n", buffer)) != 0)
+                {
+                    fprintf(stderr, "<< Server error occured, abort\n");
+                    break;
+                }
+            } else if(cmd == READ) {
+                /*std::string response(buffer);
+                std::string first_line;
+                std::stringstream ss;
+                ss << response;
+                if (!std::getline(ss, first_line, '\n')) {
+                    // server error
+                }
+
+                if((first_line.compare("OK")) != 0)
+                {
+                    fprintf(stderr, "<< Server error occured, abort\n");
+                    break;
+                }*/
+                size_t pos;
+                std::string response = std::string(buffer).substr(0, (pos = std::string(buffer).find("\n")) == std::string::npos ? 0 : pos + 1);
+                if((strcmp("OK\n", response.data())) != 0)
                 {
                     fprintf(stderr, "<< Server error occured, abort\n");
                     break;
                 }
             }
+
+            /*if ((strcmp("MESSAGE SENT", buffer)) != 0 && (strcmp("OK", buffer)) != 0 && (strcmp("LISTING ALL RECIEVED EMAILS", buffer)) != 0)
+            {
+                fprintf(stderr, "<< Server error occured, abort\n");
+                break;
+            }*/
         }
-    } while (!isQuit);
+    } while (cmd != QUIT);
 
     if (create_socket != -1)
     {
@@ -175,7 +217,7 @@ std::string requestRead()
     std::cout << "enter number of message you want to read: ";
     std::getline(std::cin, msgNum);
     
-    return std::string("READ") + '\n' + username + '\n' + msgNum;
+    return std::string("READ") + '\n' + username + '\n' + msgNum + '\n';
 }
 
 std::string requestDel()
@@ -218,12 +260,13 @@ std::string createMsg()
         }
 
         std::cout << "Input Message(end with .\\n): ";
-        while(std::getline(std::cin, message))
+
+        std::string line;
+        while(std::getline(std::cin, line))
         {     
-            if(message == "."){
-                message + "\n";
-                break;
-            }
+            message.append(line).append("\n");
+
+            if(line == ".") break;
         }
         valid = true;
     }while(!valid);
