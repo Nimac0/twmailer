@@ -10,9 +10,12 @@
 #include <string>
 #include <regex>
 #include <iostream>
+#include <fstream>
 #include <vector>
+#include <filesystem>
+#include <limits>
 
-#include <string>
+namespace fs = std::filesystem;
 
 #define BUF 1024
 #define PORT 6543
@@ -23,15 +26,23 @@ int new_socket = -1;
 
 void *clientCommunication(void *data);
 void signalHandler(int sig);
+void trimEnd(char* buffer, int* size);
+bool commandFound(const std::string message, const std::string command);
 std::string processMsg(std::string clientRequest);
+std::string listEmails(const std::string user);
+void sendMsg(const std::string message);
+std::string getUsername(std::string message);
+bool userExists(const std::string user);
+bool createDirectory(const std::string recipientName);
+bool userExists(const std::string user);
+bool addMsg(const std::string bigString, const std::string user);
+bool createTextFile(fs::path path, std::string content);
+std::fstream& GotoLine(std::fstream& file, unsigned int num);
 //createInbox()
 //sendmsg()
 //readmsg(int index)
 //listmsg()
 //del(int index)
-
-void trimEnd(char* buffer, int* size);
-bool commandFound(const std::string message, const std::string command);
 
 int main(int argc, char** argv)
 {
@@ -172,23 +183,26 @@ void *clientCommunication(void *data)
         std::string message(buffer);
       
         if (commandFound(message, "SEND")) {
-            if (send(*current_socket, "MESSAGE SENT", 13, 0) == -1) {
-
-                perror("send answer failed");
-                return NULL;
-            }
-
+            sendMsg(message);
+            /*
             if(processMsg(message).compare(" ") == 0)
             {
                 perror("error in data sent, couldnt process");
+                return NULL;
+            }
+            */
+            if (send(*current_socket, "MESSAGE SENT", 13, 0) == -1) {
+                perror("send answer failed");
                 return NULL;
             }
 
             std::cout << "TEST SUCCESSFUL" << std::endl;
 
         } else if (commandFound(message, "LIST")) {
-            // listEmails();
-            if (send(*current_socket, "LISTING ALL RECIEVED EMAILS", 30, 0) == -1) {
+            
+            std::string emailList = listEmails(getUsername(message));
+
+            if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) {
                 perror("send answer failed");
                 return NULL;
             }
@@ -304,3 +318,156 @@ std::string processMsg(std::string clientRequest)
     }
     return " ";
 }
+
+void sendMsg(const std::string message)
+{
+    if (!(processMsg(message).compare(" ") == 0))
+    {
+        std::string uname = getUsername(message);
+        if (createDirectory(uname))
+            addMsg(message, uname);
+    }
+}
+
+std::string listEmails(const std::string user)
+{
+    // Count of msgs (0 is no message or user unknown)
+    int cnt = 0;
+    std::vector<std::string> subjectList;
+
+    // TODO: More elegant solution for paths
+    fs::path basePath = "spool";
+    fs::path userPath = basePath/user;
+
+    try
+    {
+        for (auto const& dir_entry : fs::directory_iterator{userPath})
+        {
+            if (dir_entry.is_regular_file() && !(dir_entry == (userPath/"index.txt")))
+            {
+                cnt++;
+
+                std::fstream file;
+                file.open(dir_entry.path());
+
+                if (!file.is_open())
+                    return "ERR";
+
+                std::string subject; 
+                std::getline(GotoLine(file, 3), subject);
+                subjectList.push_back(subject + " " + dir_entry.path().filename().string());
+            }
+        }
+        // Turn vector into string
+        // TODO: Could also be turned into a message stream
+        std::string message = std::to_string(cnt);
+        for (const auto& subject : subjectList)
+        {
+            message += subject + "\n";
+        }
+        return message;
+    }
+    catch (const std::exception& e)
+    {
+        return "ERR:" + std::string(e.what());
+    }
+}
+
+std::string getUsername(std::string message)
+{
+    size_t pos = 0;
+    std::vector <std::string> dataToBeProcessed;
+
+    for(int i = 0; i < 3; i++) {
+        if((pos = message.find('\n')) == std::string::npos) {
+            std::cout << "couldnt parse data";
+            return " ";
+        }
+        dataToBeProcessed.push_back(message.substr(0, pos));
+        message.erase(0, pos + 1);
+    }
+    
+    std::regex validUser("[a-z0-9]+"); //double check incase of malicious user skipping client and accessing server directly
+    
+    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
+    && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8) {
+        return dataToBeProcessed[2];
+    }
+    return " ";
+}
+
+bool createDirectory(const std::string recipientName)
+{
+    if (!userExists(recipientName))
+    {
+        fs::path basePath = "spool";
+        fs::path userPath = basePath / recipientName;
+
+        try
+        {
+            fs::create_directory(userPath);
+            return createTextFile(userPath / "index.txt", "0");
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error creating directory: " << e.what() << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool userExists(const std::string user)
+{
+    fs::path basePath = "spool";
+    fs::path userPath = basePath/user;
+    fs::directory_entry uentry{user};
+    return is_directory(userPath);
+}
+
+bool addMsg(const std::string bigString, const std::string user)
+{
+    // Check which number index is at
+    std::ifstream inFile("spool/" + user + "/index.txt");
+    if (!inFile.is_open())
+        return false;
+    std::string lastEntry;
+    std::getline(inFile, lastEntry); 
+
+    if (createTextFile("spool/" + user, bigString))
+    {
+        // Rewrite index with the newly incremented latest entry
+        std::ofstream outIndex("spool/" + user + "/index.txt");
+        if (!outIndex.is_open())
+            return false;
+        outIndex << std::to_string(1 + std::stoi(lastEntry));
+        outIndex.close();
+
+        return true;
+    }
+    return false;
+} 
+
+bool createTextFile(fs::path path, std::string content)
+{
+    fs::path filePath = "spool"/path;
+    filePath.replace_extension(".txt");
+    std::ofstream textFile(path);
+    
+    if (!textFile.is_open())
+        return false;
+    textFile << content;
+    return true;
+}
+
+// https://stackoverflow.com/questions/5207550/in-c-is-there-a-way-to-go-to-a-specific-line-in-a-text-file/5207600
+std::fstream& GotoLine(std::fstream& file, unsigned int num)
+{
+    file.seekg(std::ios::beg);
+    for(unsigned int i = 0; i < num - 1; ++i)
+    {
+        file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+    }
+    return file;
+}
+
