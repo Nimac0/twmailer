@@ -433,8 +433,10 @@ bool addMsg(const std::string bigString, const std::string user)
         return false;
     std::string lastEntry;
     std::getline(inFile, lastEntry); 
+    fs::path basePath = "spool";
+    fs::path messageFilePath = basePath / user / (lastEntry + ".txt");
 
-    if (createTextFile("spool/" + user, bigString))
+    if (createTextFile(messageFilePath, bigString))
     {
         // Rewrite index with the newly incremented latest entry
         std::ofstream outIndex("spool/" + user + "/index.txt");
