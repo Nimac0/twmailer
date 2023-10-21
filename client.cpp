@@ -146,19 +146,6 @@ int main(int argc, char** argv)
                     break;
                 }
             } else if(cmd == READ) {
-                /*std::string response(buffer);
-                std::string first_line;
-                std::stringstream ss;
-                ss << response;
-                if (!std::getline(ss, first_line, '\n')) {
-                    // server error
-                }
-
-                if((first_line.compare("OK")) != 0)
-                {
-                    fprintf(stderr, "<< Server error occured, abort\n");
-                    break;
-                }*/
                 size_t pos;
                 std::string response = std::string(buffer).substr(0, (pos = std::string(buffer).find("\n")) == std::string::npos ? 0 : pos + 1);
                 if((strcmp("OK\n", response.data())) != 0)

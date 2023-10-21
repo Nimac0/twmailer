@@ -181,13 +181,13 @@ void *clientCommunication(void *data)
       
         if (commandFound(message, "SEND")) {
             sendMsg(message);
-            if (send(*current_socket, "OK\n", 3, 0) == -1) {
+            if (send(*current_socket, "OK\n", strlen("OK\n"), 0) == -1) {
             perror("send answer failed");
             return NULL;
             }
         } else if (commandFound(message, "LIST")) {
             
-            std::string emailList = listEmails(getUsername(message));
+            std::string emailList = listEmails(getUsername(message, "LIST"));
 
             if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) {
                 perror("send answer failed");
@@ -204,10 +204,10 @@ void *clientCommunication(void *data)
                 return NULL;
             }
         } 
-        if (send(*current_socket, "OK", 3, 0) == -1) {
+        /*if (send(*current_socket, "OK", 3, 0) == -1) {
             perror("send answer failed");
             return NULL;
-        }
+        }*/
 
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
 
@@ -347,7 +347,7 @@ std::string listEmails(const std::string user)
                 std::fstream inFile(dir_entry.path());
                 if (!inFile.is_open())
                     return "ERR";
-// Save subject in subjectList vector
+                // Save subject in subjectList vector
                 std::string subject; 
                 GotoLine(inFile, 4) >> subject;
                 subjectList.push_back(subject + " " + dir_entry.path().filename().string());
@@ -407,7 +407,8 @@ bool delMessage(std::string message)
     return true;
 }
 
-std::string getUsername(std::string message)
+/*
+std::string getUsername(std::string message, const std::string command)
 {
     size_t pos = 0;
     std::vector <std::string> dataToBeProcessed;
@@ -426,11 +427,11 @@ std::string getUsername(std::string message)
     std::regex validUser("[a-z0-9]+"); //double check incase of malicious user skipping client and accessing server directly
     if (command == "SEND")
     {
-    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
-    && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8)
-        return dataToBeProcessed[2];
+        if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
+        && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8)
+            return dataToBeProcessed[2];
     }
-else if (command == "LIST")
+    else if (command == "LIST")
     {
         if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
             return dataToBeProcessed[1];   
