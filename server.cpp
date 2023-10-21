@@ -31,16 +31,15 @@ void trimEnd(char* buffer, int* size);
 bool commandFound(const std::string message, const std::string command);
 std::string processMsg(std::string clientRequest);
 std::string listEmails(const std::string user);
-void sendMsg(const std::string message);
+bool sendMsg(const std::string message);
 std::string getUsername(std::string message, const std::string command);
 bool userExists(const std::string user);
 bool createDirectory(const std::string recipientName);
-bool userExists(const std::string user);
 bool addMsg(const std::string bigString, const std::string user);
 bool createTextFile(fs::path path, std::string content);
 std::fstream& GotoLine(std::fstream& file, unsigned int num);
-std::string readMessage(std::string message);
-bool delMessage(std::string message);
+std::string readMsg(std::string message);
+bool delMsg(std::string message);
 
 int main(int argc, char** argv)
 {
@@ -145,13 +144,6 @@ void *clientCommunication(void *data)
     int size;
     int *current_socket = (int *)data;
 
-    strcpy(buffer, "Please enter your commands...\r\n");
-    if (send(*current_socket, buffer, strlen(buffer), 0) == -1)
-    {
-        perror("send failed");
-        return NULL;
-    }
-
     do
     {   
         memset(buffer, 0, sizeof buffer);
@@ -181,34 +173,50 @@ void *clientCommunication(void *data)
         std::string message(buffer);
       
         if (commandFound(message, "SEND")) {
-            sendMsg(message);
-            if (send(*current_socket, "OK\n", strlen("OK\n"), 0) == -1) {
-            perror("send answer failed");
-            return NULL;
-            }
+            if(sendMsg(message)){
+                if (send(*current_socket, "OK\n", 3, 0) == -1) {
+                perror("send answer failed");
+                return NULL;
+                }
+                continue;
+            } 
         } else if (commandFound(message, "LIST")) {
-            
             std::string emailList = listEmails(getUsername(message, "LIST"));
 
             if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) {
                 perror("send answer failed");
                 return NULL;
             }
+            continue;
         } else if (commandFound(message, "READ")) {
-            std::string return_str = readMessage(message);
-            if (send(*current_socket, "OK\n", 3, 0) == -1) {
+            std::string returnStr = readMsg(message);
+
+            if(returnStr.compare(" ") != 0){
+                if (send(*current_socket, "OK\n", 3, 0) == -1) {
                 perror("send answer failed");
                 return NULL;
+                }
+                if (send(*current_socket, returnStr.c_str(), returnStr.size(), 0) == -1) {
+                    perror("send answer failed");
+                    return NULL;
+                }
+                continue;
             }
-            if (send(*current_socket, return_str.c_str(), return_str.size(), 0) == -1) {
-                perror("send answer failed");
+        } else if (commandFound(message, "DEL")) {
+            if(delMsg(message)){
+                if (send(*current_socket, "OK\n", 3, 0) == -1) {
+                    perror("send answer failed");
+                    return NULL;
+                }
+                continue;
+            }
+        }
+        if(!commandFound(message, "QUIT")){
+            if (send(*current_socket, "ERR\n", 4, 0) == -1) {
+                perror("send ERR failed");
                 return NULL;
             }
-        } 
-        /*if (send(*current_socket, "OK", 3, 0) == -1) {
-            perror("send answer failed");
-            return NULL;
-        }*/
+        }
 
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
 
@@ -300,7 +308,7 @@ std::string processMsg(std::string clientRequest)
 
     for(int i = 0; i < 3; i++) {
         if((pos = clientRequest.find('\n')) == std::string::npos) {
-            std::cout << "couldnt parse data";
+            std::cerr << "couldnt parse data";
             return " ";
         }
         dataToBeProcessed.push_back(clientRequest.substr(0, pos));
@@ -316,14 +324,16 @@ std::string processMsg(std::string clientRequest)
     return " ";
 }
 
-void sendMsg(const std::string message)
+bool sendMsg(const std::string message)
 {
-    if ((!processMsg(message).compare(" ") == 0))
-    {
-        std::string uname = getUsername(message, "SEND");
-        if (createDirectory(uname))
-            addMsg(processMsg(message), uname);
+    if((processMsg(message).compare(" ") == 0)) return 0; //return 0 when error occurs
+
+    std::string uname = getUsername(message, "SEND");
+    if (createDirectory(uname)) {
+        addMsg(processMsg(message), uname);
+        return 1;
     }
+    return 0;
 }
 
 std::string listEmails(const std::string user)
@@ -349,20 +359,19 @@ std::string listEmails(const std::string user)
             if (fs::is_regular_file(path) && !(path == (userPath/"index.txt")))
             {
                 cnt++;
-
                 // Open current file
                 std::fstream inFile(path);
                 if (!inFile.is_open())
-                    return "ERR";
+                    return "ERR\n";
                 // Save subject in subjectList vector
                 std::string subject; 
-                GotoLine(inFile, 4) >> subject;
+                getline(GotoLine(inFile, 3), subject);
+                GotoLine(inFile, 3) >> subject;
                 std::string filename = path.filename();
                 std::string noExt = filename.find_last_of(".") == std::string::npos ? filename : filename.substr(0, filename.find_last_of("."));
                 subjectList.push_back(noExt + ": " + subject);
             }
         }
-
         // Turn vector into string
         std::string message = std::to_string(cnt) + "\n";
         for (const auto& subject : subjectList)
@@ -373,30 +382,21 @@ std::string listEmails(const std::string user)
     }
     catch (const std::exception& e)
     {
-        return "ERR: " + std::string(e.what());
+        return "ERR\n";
     }
 }
 
-std::string readMessage(std::string message)
-{    
-    size_t pos = 0;
-    std::vector <std::string> data;
-    message.append("\n");
-    for(int i = 0; i < 3; i++) {
-        if((pos = message.find('\n')) == std::string::npos) {
-            std::cout << "couldnt parse data for read";
-            return " ";
-        }
-        data.push_back(message.substr(0, pos));
-        message.erase(0, pos + 1);
-    }
-    fs::path filepath = fs::path("spool")/data[1]/(data[2] + ".txt");
+std::string readMsg(std::string message)
+{
+    std::string data = getUsername(message, "READ");
+    
+    fs::path filepath = fs::path("spool")/data.substr(0, data.find("\n"))/(data.substr((data.find("\n")) + 1) + ".txt");
 
     std::ifstream file(filepath);
 
     if (!file.is_open())
     {
-        throw std::runtime_error("Could not open file ");
+        return " ";
     }
 
     std::string requestedMsg;
@@ -406,7 +406,7 @@ std::string readMessage(std::string message)
     while (std::getline(file, msgPiece))
     {
         count++; //only gives out message/ignores previous 3 lines
-        if(count > 3)
+        if(count > 3 && msgPiece != ".")
         {
             requestedMsg += msgPiece + "\n";
         }
@@ -416,43 +416,17 @@ std::string readMessage(std::string message)
     return requestedMsg;
 }
 
-bool delMessage(std::string message)
+bool delMsg(std::string message)
 {
-    return true;
+    std::string data = getUsername(message, "READ");
+    fs::path filepath = fs::path("spool")/data.substr(0, data.find("\n"))/(data.substr((data.find("\n")) + 1) + ".txt");
+    if(fs::remove(filepath) == 0)
+    {
+        std::cerr << "file deletion error occured" << std::endl;
+        return 0; //return 0 on error
+    }
+    return 1;
 }
-
-/*
-std::string getUsername(std::string message, const std::string command)
-{
-    size_t pos = 0;
-    std::vector <std::string> dataToBeProcessed;
-
-    for(int i = 0; i < (command == "LIST" ? 2 : 3); i++) 
-    {
-        if((pos = message.find('\n')) == std::string::npos) 
-        {
-            std::cout << "couldnt parse data";
-            return " ";
-        }
-        dataToBeProcessed.push_back(message.substr(0, pos));
-        message.erase(0, pos + 1);
-    }
-    
-    std::regex validUser("[a-z0-9]+"); //double check incase of malicious user skipping client and accessing server directly
-    if (command == "SEND")
-    {
-        if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
-        && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8)
-            return dataToBeProcessed[2];
-    }
-    else if (command == "LIST")
-    {
-        if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
-            return dataToBeProcessed[1];   
-    }
-    return " ";
-}
-*/
 
 std::string getUsername(std::string message, const std::string command)
 {
@@ -467,7 +441,7 @@ std::string getUsername(std::string message, const std::string command)
 
     if (dataToBeProcessed.size() < (command == "LIST" ? 2 : 3))
     {
-        std::cout << "couldn't parse data" << std::endl;
+        std::cerr << "couldn't parse data" << std::endl;
         return " ";
     }
 
@@ -486,6 +460,13 @@ std::string getUsername(std::string message, const std::string command)
         if (std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
         {
             return dataToBeProcessed[1];
+        }
+    }
+    else if (command == "READ" || command == "DEL") //when read or delete -> return username and number of file to be interacted with
+    {
+        if (std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
+        {
+            return dataToBeProcessed[1] + "\n" + dataToBeProcessed[2];
         }
     }
     return " ";

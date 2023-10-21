@@ -23,7 +23,7 @@ enum cmd
     QUIT
 };
 
-// void printActionsMenu();
+void printActionsMenu();
 void trimEnd(char* buffer, int* size);
 std::string createMsg();
 bool checkUserValidity(std::string username);
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
     int create_socket;
     char buffer[BUF];
     struct sockaddr_in address;
-    int size;
+    //int size;
     cmd cmd = DEFAULT;
 
     if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
@@ -69,55 +69,34 @@ int main(int argc, char** argv)
     printf("Connection with server (%s) established\n",
             inet_ntoa(address.sin_addr));
 
-    size = recv(create_socket, buffer, BUF - 1, 0);
-    if (size == -1)
-    {
-        perror("recv error");
-    }
-    else if (size == 0)
-    {
-        printf("Server closed remote socket\n");
-    }
-    else
-    {
-        buffer[size] = '\0';
-        printf("%s", buffer); 
-    }
-
     do
     {
-        // printActionsMenu();
+        printActionsMenu();
+
         memset(buffer, 0, sizeof buffer);
         printf(">> ");
         if (fgets(buffer, BUF, stdin) != NULL)
         {
             int size = strlen(buffer);
             trimEnd(&buffer[0], &size);
-            
+            // checks input request
             if(!strcmp(buffer, "SEND")){
                 cmd = SEND;
                 strcpy(buffer, createMsg().data());
-            }
-
-            if(!strcmp(buffer, "LIST")){
+            } else if(!strcmp(buffer, "LIST")) {
                 cmd = LIST;
                 strcpy(buffer, requestList().data());
-            }
-
-            if(!strcmp(buffer, "READ")){
+            } else if(!strcmp(buffer, "READ")) {
                 cmd = READ;
                 strcpy(buffer, requestRead().data());
-            }
-
-            if(!strcmp(buffer, "DEL")){
+            } else if(!strcmp(buffer, "DEL")) {
                 cmd = DEL;
                 strcpy(buffer, requestDel().data());
-            }
-
-            if(!strcmp(buffer, "QUIT")){
+            } else if(!strcmp(buffer, "QUIT")) {
                 cmd = QUIT;
             }
             
+            // checks size and cleans up request before sending
             size = strlen(buffer);
             trimEnd(&buffer[0], &size);
             if ((send(create_socket, buffer, size, 0)) == -1) 
@@ -139,6 +118,11 @@ int main(int argc, char** argv)
             }
             buffer[size] = '\0';
             printf("<< %s", buffer);
+
+            if((strcmp("ERR\n", buffer)) == 0){
+                continue;
+            }
+
             if(cmd == SEND || cmd == DEL) {
                 if((strcmp("OK\n", buffer)) != 0)
                 {
@@ -153,13 +137,8 @@ int main(int argc, char** argv)
                     fprintf(stderr, "<< Server error occured, abort\n");
                     break;
                 }
-            }
 
-            /*if ((strcmp("MESSAGE SENT", buffer)) != 0 && (strcmp("OK", buffer)) != 0 && (strcmp("LISTING ALL RECIEVED EMAILS", buffer)) != 0)
-            {
-                fprintf(stderr, "<< Server error occured, abort\n");
-                break;
-            }*/
+            }
         }
     } while (cmd != QUIT);
 
@@ -180,12 +159,11 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
 }
 
-/*
 void printActionsMenu()
 {
-    printf("Possible actions:\nSEND\nLIST\nQUIT\n");
+    std::cout << "Choose an action to perform:\n |SEND|LIST|READ|DEL|QUIT|" << std::endl;
 }
-*/
+
 std::string requestList()
 {
     std::string username;
