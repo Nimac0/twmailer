@@ -38,9 +38,8 @@ bool userExists(const std::string user);
 bool addMsg(const std::string bigString, const std::string user);
 bool createTextFile(fs::path path, std::string content);
 std::fstream& GotoLine(std::fstream& file, unsigned int num);
-
-//readmsg(int index)
-//del(int index)
+std::string readMessage(std::string message);
+bool delMessage(std::string message);
 
 int main(int argc, char** argv)
 {
@@ -182,25 +181,25 @@ void *clientCommunication(void *data)
       
         if (commandFound(message, "SEND")) {
             sendMsg(message);
-            /*
-            if(processMsg(message).compare(" ") == 0)
-            {
-                perror("error in data sent, couldnt process");
-                return NULL;
+            if (send(*current_socket, "OK\n", 3, 0) == -1) {
+            perror("send answer failed");
+            return NULL;
             }
-            */
-            if (send(*current_socket, "MESSAGE SENT", 13, 0) == -1) {
+        } else if (commandFound(message, "LIST")) {
+            
+            std::string emailList = listEmails(getUsername(message));
+
+            if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) {
                 perror("send answer failed");
                 return NULL;
             }
-
-            std::cout << "TEST SUCCESSFUL" << std::endl;
-
-        } 
-        else if (commandFound(message, "LIST")) {
-            std::string emailList = listEmails(getUsername(message, "LIST"));
-
-            if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) {
+        } else if (commandFound(message, "READ")) {
+            std::string return_str = readMessage(message);
+            if (send(*current_socket, "OK\n", 3, 0) == -1) {
+                perror("send answer failed");
+                return NULL;
+            }
+            if (send(*current_socket, return_str.c_str(), return_str.size(), 0) == -1) {
                 perror("send answer failed");
                 return NULL;
             }
@@ -209,6 +208,7 @@ void *clientCommunication(void *data)
             perror("send answer failed");
             return NULL;
         }
+
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
 
     if (*current_socket != -1)
@@ -368,8 +368,46 @@ std::string listEmails(const std::string user)
     }
 }
 
-/*
-std::string getUsername(std::string message, const std::string command)
+std::string readMessage(std::string message)
+{    
+    size_t pos = 0;
+    std::vector <std::string> data;
+    message.append("\n");
+    for(int i = 0; i < 3; i++) {
+        if((pos = message.find('\n')) == std::string::npos) {
+            std::cout << "couldnt parse data for read";
+            return " ";
+        }
+        data.push_back(message.substr(0, pos));
+        message.erase(0, pos + 1);
+    }
+    fs::path filepath = fs::path("spool")/data[1]/(data[2] + ".txt");
+
+    std::ifstream file(filepath);
+
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Could not open file ");
+    }
+
+    std::string requestedMsg;
+    std::string msgPiece;
+
+    while (std::getline(file, msgPiece))
+    {
+        requestedMsg = requestedMsg + msgPiece + "\n";
+    }
+    file.close();
+
+    return requestedMsg;
+}
+
+bool delMessage(std::string message)
+{
+    return true;
+}
+
+std::string getUsername(std::string message)
 {
     size_t pos = 0;
     std::vector <std::string> dataToBeProcessed;
