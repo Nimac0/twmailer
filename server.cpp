@@ -14,6 +14,7 @@
 #include <vector>
 #include <filesystem>
 #include <limits>
+#include <set>
 
 namespace fs = std::filesystem;
 
@@ -337,28 +338,36 @@ std::string listEmails(const std::string user)
 
     try
     {
-        for (auto const& dir_entry : fs::directory_iterator(userPath))
+        std::set<fs::path> sorted_files;
+
+        for (auto const& dir_entry : fs::directory_iterator(userPath)) {
+            sorted_files.insert(dir_entry.path());
+        }
+
+        for (auto& path : sorted_files )
         {
-            if (dir_entry.is_regular_file() && !(dir_entry == (userPath/"index.txt")))
+            if (fs::is_regular_file(path) && !(path == (userPath/"index.txt")))
             {
                 cnt++;
 
                 // Open current file
-                std::fstream inFile(dir_entry.path());
+                std::fstream inFile(path);
                 if (!inFile.is_open())
                     return "ERR";
                 // Save subject in subjectList vector
                 std::string subject; 
                 GotoLine(inFile, 4) >> subject;
-                subjectList.push_back(subject + " " + dir_entry.path().filename().string());
+                std::string filename = path.filename();
+                std::string noExt = filename.find_last_of(".") == std::string::npos ? filename : filename.substr(0, filename.find_last_of("."));
+                subjectList.push_back(noExt + ": " + subject);
             }
         }
 
         // Turn vector into string
-        std::string message = std::to_string(cnt);
+        std::string message = std::to_string(cnt) + "\n";
         for (const auto& subject : subjectList)
         {
-            message += "\n" + subject;
+            message += subject + "\n";
         }
         return message;
     }
@@ -392,10 +401,15 @@ std::string readMessage(std::string message)
 
     std::string requestedMsg;
     std::string msgPiece;
+    int count = 0;
 
     while (std::getline(file, msgPiece))
     {
-        requestedMsg = requestedMsg + msgPiece + "\n";
+        count++; //only gives out message/ignores previous 3 lines
+        if(count > 3)
+        {
+            requestedMsg += msgPiece + "\n";
+        }
     }
     file.close();
 
