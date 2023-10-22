@@ -1,10 +1,14 @@
+INC = -I./headers
 all: server client
 
-server: server.cpp
-	g++ -std=c++17 -Wall -Werror -o server server.cpp commandFunctions.h helperFunctions.h
+server: server.o commandFunctions.o helperFunctions.o
+	g++ -std=c++17 -Wall -Werror -o server $^
 
-client: client.cpp
-	g++ -std=c++17 -Wall -Werror -o client client.cpp clientRequests.h
+client: client.o clientRequests.o
+	g++ -std=c++17 -Wall -Werror -o client $^
+
+%.o: %.cpp
+	g++ -std=c++17 -Wall -Werror $(INC) -c -o $@ $<
 
 clean:
-	rm -f server client
+	rm -f server client *.o

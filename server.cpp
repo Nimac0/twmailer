@@ -1,20 +1,3 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <signal.h>
-#include <string>
-#include <regex>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <filesystem>
-#include <limits>
-#include <set>
 #include "commandFunctions.h"
 
 namespace fs = std::filesystem;
