@@ -14,7 +14,7 @@ std::string processMsg(std::string clientRequest)
         clientRequest.erase(0, pos + 1);
     }
     
-    std::regex validUser("[a-z0-9]+"); //double check incase of malicious user skipping client and accessing server directly
+    std::regex validUser("[a-z0-9]+"); // Double check incase of malicious user skipping client and accessing server directly
     
     if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
     && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8) {
@@ -23,7 +23,7 @@ std::string processMsg(std::string clientRequest)
     return " ";
 }
 
-bool addMsg(const std::string bigString, const std::string user)
+bool addMsg(const std::string message, const std::string user)
 {
     // Check which number index is at
     std::ifstream inFile("spool/" + user + "/index.txt");
@@ -32,10 +32,10 @@ bool addMsg(const std::string bigString, const std::string user)
     std::string lastEntry;
     std::getline(inFile, lastEntry); 
 
-    // Create message text file
+    // Create message.txt file
     fs::path basePath = "spool";
     fs::path messageFilePath = basePath / user / (lastEntry + ".txt");
-    if (createTextFile(messageFilePath, bigString))
+    if (createTextFile(messageFilePath, message))
     {
         // Rewrite index with the newly incremented latest entry
         std::ofstream outIndex("spool/" + user + "/index.txt");
@@ -49,45 +49,74 @@ bool addMsg(const std::string bigString, const std::string user)
     return false;
 } 
 
+bool getCredentials(const std::string message, std::vector<std::string>& credentialsVector)
+{
+    std::stringstream ss(message);
+    std::string line;
+    std::vector<std::string> messageInLines;
+
+    while (std::getline(ss, line, '\n'))
+    {
+        messageInLines.push_back(line);
+    }
+    // Checks that the minimum for the amount of lines in order to get the username is there
+    if (messageInLines.size() < 3)
+    {
+        std::cerr << "Couldn't parse data" << std::endl;
+        return false;
+    }
+    std::regex validUser("[a-z0-9]+");
+
+    if (std::regex_match(messageInLines[1], validUser) && messageInLines[1].size() <= 8)
+    {
+        credentialsVector[0] = messageInLines[1];
+        credentialsVector[1] = messageInLines[2];
+        return true;
+    }
+    return false;
+}
+
+// TODO: Can be eventually deleted
 std::string getUsername(std::string message, const std::string command)
 {
     std::stringstream ss(message);
     std::string line;
-    std::vector<std::string> dataToBeProcessed;
+    std::vector<std::string> messageInLines;
 
     while (std::getline(ss, line, '\n'))
     {
-        dataToBeProcessed.push_back(line);
+        messageInLines.push_back(line);
     }
 
-    if (dataToBeProcessed.size() < (command == "LIST" ? 2 : 3))
+    // Checks that the minimum for the amount of lines in order to get the username is there
+    if (messageInLines.size() < (command == "LIST" ? 2 : 3))
     {
-        std::cerr << "couldn't parse data" << std::endl;
+        std::cerr << "Couldn't parse data" << std::endl;
         return " ";
     }
 
     std::regex validUser("[a-z0-9]+");
 
-    if (command == "SEND")
+    if (command == "SEND" || command == "LOGIN")
     {
-        if (std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8 &&
-            std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8)
+        if (std::regex_match(messageInLines[1], validUser) && messageInLines[1].size() <= 8 &&
+            std::regex_match(messageInLines[2], validUser) && messageInLines[2].size() <= 8)
         {
-            return dataToBeProcessed[2];
+            return messageInLines[2];
         }
     }
     else if (command == "LIST")
     {
-        if (std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
+        if (std::regex_match(messageInLines[1], validUser) && messageInLines[1].size() <= 8)
         {
-            return dataToBeProcessed[1];
+            return messageInLines[1];
         }
     }
-    else if (command == "READ" || command == "DEL") //when read or delete -> return username and number of file to be interacted with
+    else if (command == "READ" || command == "DEL") // When read or delete -> return username and number of file to be interacted with
     {
-        if (std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8)
+        if (std::regex_match(messageInLines[1], validUser) && messageInLines[1].size() <= 8)
         {
-            return dataToBeProcessed[1] + "\n" + dataToBeProcessed[2];
+            return messageInLines[1] + "\n" + messageInLines[2];
         }
     }
     return " ";
@@ -138,6 +167,12 @@ bool createTextFile(fs::path path, std::string content)
     return true;
 }
 
+void blacklistUser()
+{
+
+
+}
+
 // https://stackoverflow.com/questions/5207550/in-c-is-there-a-way-to-go-to-a-specific-line-in-a-text-file/5207600
 std::fstream& gotoLine(std::fstream& file, unsigned int num)
 {
@@ -148,3 +183,4 @@ std::fstream& gotoLine(std::fstream& file, unsigned int num)
     }
     return file;
 }
+

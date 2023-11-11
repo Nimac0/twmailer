@@ -1,4 +1,16 @@
 #include "clientRequests.h"
+#include "mypw.h"
+
+std::string requestLogin()
+{
+    std::string username;
+    std::cout << "enter username: ";
+    std::getline(std::cin, username);
+    std::cout << "enter password: ";
+    std::string password = getpass();
+
+    return std::string("LOGIN") + '\n' + username + '\n' + password;
+}
 
 std::string requestList()
 {
@@ -42,7 +54,7 @@ std::string createMsg()
 
     bool valid = false;
     
-    do{   
+    do {   
         std::cout << "Input Sender: ";
         std::getline(std::cin, sender);
         std::cout << "Input Recipient: ";

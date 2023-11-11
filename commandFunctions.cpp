@@ -1,9 +1,27 @@
 #include "commandFunctions.h"
+#include "ldapClient.h"
 
-//SEND
-bool sendMsg(const std::string message)
+//LOGIN
+// LDAPClient.authentificateUser RETURN CODES:
+//  0 --> Success
+// -1 --> Error
+// -2 --> Falied login 
+int handleLogin(std::string message)
 {
-    if((processMsg(message).compare(" ") == 0)) return 0; //return 0 when error occurs
+    if((processMsg(message).compare(" ") == 0)) return -1; // return 0 when error occurs
+
+    LDAPClient ldapClient;
+    std::vector<std::string> credentials;
+    if (!getCredentials(message, credentials))
+    {
+        return -1;
+    }
+    return ldapClient.authenticateUser(credentials[0], credentials[1]);
+}
+//SEND
+bool handleSend(const std::string message)
+{
+    if((processMsg(message).compare(" ") == 0)) return 0; // return 0 when error occurs
 
     std::string uname = getUsername(message, "SEND");
     if (createDirectory(uname)) {
@@ -13,7 +31,7 @@ bool sendMsg(const std::string message)
     return 0;
 }
 //LIST
-std::string listEmails(const std::string user)
+std::string handleList(const std::string user)
 {
     // Count of msgs (0 is no message or user unknown)
     int cnt = 0;
@@ -62,7 +80,7 @@ std::string listEmails(const std::string user)
     }
 }
 //READ
-std::string readMsg(std::string message)
+std::string handleRead(std::string message)
 {
     std::string data = getUsername(message, "READ");
     
@@ -93,7 +111,7 @@ std::string readMsg(std::string message)
     return requestedMsg;
 }
 //DEL
-bool delMsg(std::string message)
+bool handleDelete(std::string message)
 {
     std::string data = getUsername(message, "READ");
     fs::path filepath = fs::path("spool")/data.substr(0, data.find("\n"))/(data.substr((data.find("\n")) + 1) + ".txt");
