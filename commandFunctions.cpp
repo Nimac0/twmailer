@@ -8,8 +8,6 @@
 // -2 --> Falied login 
 int handleLogin(std::string message)
 {
-    if((processMsg(message).compare(" ") == 0)) return -1; // return 0 when error occurs
-
     LDAPClient ldapClient;
     std::vector<std::string> credentials;
     if (!getCredentials(message, credentials))

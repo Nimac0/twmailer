@@ -39,7 +39,6 @@ bool LDAPClient::setUpLDAPClient()
 }
 bool LDAPClient::setUpLDAPConnection()
 {
-    LDAP *ldapHandle;
     returnCode = ldap_initialize(&ldapHandle, ldapUri.c_str());
     if (returnCode != LDAP_SUCCESS)
     {

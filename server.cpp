@@ -149,8 +149,10 @@ void *clientCommunication(void *data)
 
         if (commandFound(message, "LOGIN")) {
             int returnCode = handleLogin(message);
+            std::cerr << "DEBUG: \n" << returnCode << std::endl;
             if (returnCode == LDAP_LOGIN_FAILED)
             {
+                std::cerr << "DEBUG: entered if\n" << std::endl;
                 // TODO:
                 // Increment attempts int (attempts must not be persisted, only the blacklist)
                 // if loginAttempts >= 3 --> blacklistUser();

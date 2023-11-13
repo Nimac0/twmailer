@@ -62,15 +62,14 @@ bool getCredentials(const std::string message, std::vector<std::string>& credent
     // Checks that the minimum for the amount of lines in order to get the username is there
     if (messageInLines.size() < 3)
     {
-        std::cerr << "Couldn't parse data" << std::endl;
         return false;
     }
     std::regex validUser("[a-z0-9]+");
 
     if (std::regex_match(messageInLines[1], validUser) && messageInLines[1].size() <= 8)
     {
-        credentialsVector[0] = messageInLines[1];
-        credentialsVector[1] = messageInLines[2];
+        credentialsVector.push_back(messageInLines[1]);
+        credentialsVector.push_back(messageInLines[2]);
         return true;
     }
     return false;
