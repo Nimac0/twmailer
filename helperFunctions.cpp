@@ -1,4 +1,5 @@
 #include "helperFunctions.h"
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 std::string processMsg(std::string clientRequest)
 {
@@ -25,18 +26,20 @@ std::string processMsg(std::string clientRequest)
 
 bool addMsg(const std::string message, const std::string user)
 {
+    pthread_mutex_lock(&mutex);
     // Check which number index is at
     std::ifstream inFile("spool/" + user + "/index.txt");
     if (!inFile.is_open())
         return false;
     std::string lastEntry;
-    std::getline(inFile, lastEntry); 
+    std::getline(inFile, lastEntry);
 
     // Create message.txt file
     fs::path basePath = "spool";
     fs::path messageFilePath = basePath / user / (lastEntry + ".txt");
+
     if (createTextFile(messageFilePath, message))
-    {
+    {  
         // Rewrite index with the newly incremented latest entry
         std::ofstream outIndex("spool/" + user + "/index.txt");
         if (!outIndex.is_open())
@@ -44,8 +47,12 @@ bool addMsg(const std::string message, const std::string user)
         outIndex << std::to_string(1 + std::stoi(lastEntry));
         outIndex.close();
 
+        pthread_mutex_unlock(&mutex); 
+         
         return true;
     }
+
+    pthread_mutex_unlock(&mutex); 
     return false;
 } 
 

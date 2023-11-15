@@ -15,9 +15,11 @@
 #include <filesystem>
 #include <limits>
 #include <set>
+#include <pthread.h>
 
 namespace fs = std::filesystem;
 //-------------------FW DECLARATIONS--------------------------------
+
 std::string processMsg(std::string clientRequest);
 bool addMsg(const std::string message, const std::string user);
 

@@ -24,6 +24,7 @@ int main(int argc, char** argv)
     socklen_t addrlen;
     struct sockaddr_in address, cliaddress;
     int reuseValue = 1; // bool
+    pthread_t newThread;
 
     if (signal(SIGINT, signalHandler) == SIG_ERR)
     {
@@ -91,7 +92,10 @@ int main(int argc, char** argv)
         inet_ntoa(cliaddress.sin_addr),
         ntohs(cliaddress.sin_port));
 
-        clientCommunication(&new_socket);
+        if((pthread_create(&newThread, NULL, clientCommunication, new int(new_socket))) != 0)// makes new thread, new int -> no race conditions bc of overwriting
+        {
+            perror("thread error");
+        }
 
         new_socket = -1;
     }
@@ -115,9 +119,12 @@ void *clientCommunication(void *data)
     char buffer[BUF];
     int size;
     int *current_socket = (int *)data;
+    // bool loggedIn = false;
+    pthread_detach(pthread_self());
+    std::cerr << "THREAD STARTED, ID: " << pthread_self() << std::endl;
+
 
     // int loginAttempts = 0;
-
     do
     {   
         memset(buffer, 0, sizeof buffer);
@@ -146,13 +153,11 @@ void *clientCommunication(void *data)
         printf("Message received:\n%s\n", buffer);
 
         std::string message(buffer);
-
         if (commandFound(message, "LOGIN")) {
             int returnCode = handleLogin(message);
             std::cerr << "DEBUG: \n" << returnCode << std::endl;
             if (returnCode == LDAP_LOGIN_FAILED)
             {
-                std::cerr << "DEBUG: entered if\n" << std::endl;
                 // TODO:
                 // Increment attempts int (attempts must not be persisted, only the blacklist)
                 // if loginAttempts >= 3 --> blacklistUser();
@@ -233,6 +238,8 @@ void *clientCommunication(void *data)
         }
         *current_socket = -1;
     }
+
+    delete(current_socket);
     return NULL;
 }
 
