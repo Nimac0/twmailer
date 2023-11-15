@@ -13,6 +13,7 @@
 enum cmd
 {
     DEFAULT = 0,
+    LOGIN,
     SEND,
     LIST,
     READ,
@@ -21,6 +22,7 @@ enum cmd
 };
 //-----------------FW DECS---------------------
 std::string createMsg();
+std::string requestLogin();
 std::string requestList();
 std::string requestRead();
 std::string requestDel();

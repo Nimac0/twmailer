@@ -11,9 +11,10 @@ int main(int argc, char** argv)
     int create_socket;
     char buffer[BUF];
     struct sockaddr_in address;
-    //int size;
+    // int size;
     cmd cmd = DEFAULT;
 
+//-----------------------CONNECT TO SERVER-----------------------
     if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         perror("Socket error");
@@ -32,7 +33,6 @@ int main(int argc, char** argv)
     {
         inet_aton(argv[1], &address.sin_addr);
     }
-
     if (connect(create_socket,
                 (struct sockaddr *)&address,
                 sizeof(address)) == -1)
@@ -40,22 +40,24 @@ int main(int argc, char** argv)
         perror("Connect error - no server available");
         return EXIT_FAILURE;
     }
-
     printf("Connection with server (%s) established\n",
             inet_ntoa(address.sin_addr));
-
+//--------------------------------------------------------------
     do
     {
         printActionsMenu();
-
         memset(buffer, 0, sizeof buffer);
         printf(">> ");
         if (fgets(buffer, BUF, stdin) != NULL)
         {
             int size = strlen(buffer);
             trimEnd(&buffer[0], &size);
-            // checks input request
-            if(!strcmp(buffer, "SEND")){
+            // checks input request#
+            if (!strcmp(buffer, "LOGIN"))
+            {
+                cmd = LOGIN;
+                strcpy(buffer, requestLogin().data());
+            } else if(!strcmp(buffer, "SEND")){
                 cmd = SEND;
                 strcpy(buffer, createMsg().data());
             } else if(!strcmp(buffer, "LIST")) {
@@ -71,7 +73,7 @@ int main(int argc, char** argv)
                 cmd = QUIT;
             }
             
-            // checks size and cleans up request before sending
+            // Check size and clean up request before sending
             size = strlen(buffer);
             trimEnd(&buffer[0], &size);
             if ((send(create_socket, buffer, size, 0)) == -1) 
@@ -83,7 +85,7 @@ int main(int argc, char** argv)
             size = recv(create_socket, buffer, BUF - 1, 0);
             if (size == -1)
             {
-                perror("recv error");
+                perror("Error receiving");
                 break;
             }
             else if (size == 0)
@@ -91,14 +93,24 @@ int main(int argc, char** argv)
                 printf("Server closed remote socket\n");
                 break;
             }
+            
             buffer[size] = '\0';
             printf("<< %s", buffer);
 
-            if((strcmp("ERR\n", buffer)) == 0){
+            if((strcmp("ERR\n", buffer)) == 0) {
                 continue;
             }
 
-            if(cmd == SEND || cmd == DEL) {
+            if(cmd == LOGIN) {
+                if((strcmp("OK\n", buffer)) != 0)
+                {
+                    // TODO: Try to log in again
+                    fprintf(stderr, "<< Server error occured, abort\n");
+                    break;
+                }
+                // 
+            }
+            else if(cmd == SEND || cmd == DEL) {
                 if((strcmp("OK\n", buffer)) != 0)
                 {
                     fprintf(stderr, "<< Server error occured, abort\n");
@@ -112,7 +124,6 @@ int main(int argc, char** argv)
                     fprintf(stderr, "<< Server error occured, abort\n");
                     break;
                 }
-
             }
         }
     } while (cmd != QUIT);
