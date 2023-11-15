@@ -7,7 +7,7 @@ std::string processMsg(std::string clientRequest)
 
     for(int i = 0; i < 3; i++) {
         if((pos = clientRequest.find('\n')) == std::string::npos) {
-            std::cout << "couldnt parse data";
+            std::cerr << "couldnt parse data";
             return " ";
         }
         dataToBeProcessed.push_back(clientRequest.substr(0, pos));
