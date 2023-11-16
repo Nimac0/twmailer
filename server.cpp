@@ -219,7 +219,7 @@ void *clientCommunication(void *data, const std::string clientIP)
             }
         }
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
-    
+
 // Shut down and close socket connection
     if (*current_socket != -1)
     {
