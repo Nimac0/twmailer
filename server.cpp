@@ -119,7 +119,8 @@ void *clientCommunication(void *data)
     char buffer[BUF];
     int size;
     int *current_socket = (int *)data;
-    // bool loggedIn = false;
+    bool loggedIn = false;
+    std::string *username = new std::string();
     pthread_detach(pthread_self());
     std::cerr << "THREAD STARTED, ID: " << pthread_self() << std::endl;
 
@@ -153,17 +154,21 @@ void *clientCommunication(void *data)
         printf("Message received:\n%s\n", buffer);
 
         std::string message(buffer);
-        if (commandFound(message, "LOGIN")) {
-            int returnCode = handleLogin(message);
-            std::cerr << "DEBUG: \n" << returnCode << std::endl;
+        if (commandFound(message, "LOGIN") && !loggedIn) {
+            std::cout << "USERADRESS: " << username << std::endl;
+            int returnCode = handleLogin(message, username);
+            std::cout << "USERVALUE: " << *username << std::endl;
+            std::cout << "RETURN CODE: " << returnCode << std::endl;
             if (returnCode == LDAP_LOGIN_FAILED)
             {
                 // TODO:
                 // Increment attempts int (attempts must not be persisted, only the blacklist)
                 // if loginAttempts >= 3 --> blacklistUser();
+                continue;
             }
-            else if (returnCode == LDAP_LOGIN_SUCCESS)
+            if (returnCode == LDAP_LOGIN_SUCCESS)
             {
+                loggedIn = true;
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
                 {
                     perror("Failed to send answer");
@@ -172,7 +177,7 @@ void *clientCommunication(void *data)
                 continue;
             } 
         } else if (commandFound(message, "SEND")) {
-            if (handleSend(message))
+            if (handleSend(message, *username))
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
                 {
@@ -182,7 +187,7 @@ void *clientCommunication(void *data)
                 continue;
             } 
         } else if (commandFound(message, "LIST")) {
-            std::string emailList = handleList(getUsername(message, "LIST"));
+            std::string emailList = handleList(*username);
             if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) 
             {
                 perror("send answer failed");
@@ -190,7 +195,7 @@ void *clientCommunication(void *data)
             }
             continue;
         } else if (commandFound(message, "READ")) {
-            std::string returnStr = handleRead(message);
+            std::string returnStr = handleRead(message, *username);
             if (returnStr.compare(" ") != 0) {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
                 {
@@ -206,7 +211,7 @@ void *clientCommunication(void *data)
             }
         } else if (commandFound(message, "DEL")) 
         {
-            if (handleDelete(message)) 
+            if (handleDelete(message, *username)) 
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
                 {
@@ -225,6 +230,8 @@ void *clientCommunication(void *data)
             }
         }
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
+    
+    delete(username);
 // Shut down and close socket connection
     if (*current_socket != -1)
     {

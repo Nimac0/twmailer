@@ -1,12 +1,12 @@
 #include "helperFunctions.h"
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t sendMutex = PTHREAD_MUTEX_INITIALIZER;
 
 std::string processMsg(std::string clientRequest)
 {
     size_t pos = 0;
     std::vector <std::string> dataToBeProcessed;
-
-    for(int i = 0; i < 3; i++) {
+    for(int i = 0; i < 2; i++) { // SEND[0] recipient[1]
         if((pos = clientRequest.find('\n')) == std::string::npos) {
             std::cerr << "couldnt parse data";
             return " ";
@@ -17,18 +17,17 @@ std::string processMsg(std::string clientRequest)
     
     std::regex validUser("[a-z0-9]+"); // Double check incase of malicious user skipping client and accessing server directly
     
-    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
-    && std::regex_match(dataToBeProcessed[2], validUser) && dataToBeProcessed[2].size() <= 8) {
-        return dataToBeProcessed[1] + '\n' + dataToBeProcessed[2] + '\n' + clientRequest;
+    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8) {
+        return dataToBeProcessed[1] + '\n' + clientRequest;
     }
     return " ";
 }
 
-bool addMsg(const std::string message, const std::string user)
+bool addMsg(const std::string message, const std::string recipient)
 {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&sendMutex); // locks send so two messages cant have same number
     // Check which number index is at
-    std::ifstream inFile("spool/" + user + "/index.txt");
+    std::ifstream inFile("spool/" + recipient + "/index.txt");
     if (!inFile.is_open())
         return false;
     std::string lastEntry;
@@ -36,23 +35,23 @@ bool addMsg(const std::string message, const std::string user)
 
     // Create message.txt file
     fs::path basePath = "spool";
-    fs::path messageFilePath = basePath / user / (lastEntry + ".txt");
+    fs::path messageFilePath = basePath / recipient / (lastEntry + ".txt");
 
     if (createTextFile(messageFilePath, message))
     {  
         // Rewrite index with the newly incremented latest entry
-        std::ofstream outIndex("spool/" + user + "/index.txt");
+        std::ofstream outIndex("spool/" + recipient + "/index.txt");
         if (!outIndex.is_open())
             return false;
         outIndex << std::to_string(1 + std::stoi(lastEntry));
         outIndex.close();
 
-        pthread_mutex_unlock(&mutex); 
+        pthread_mutex_unlock(&sendMutex); 
          
         return true;
     }
 
-    pthread_mutex_unlock(&mutex); 
+    pthread_mutex_unlock(&sendMutex); 
     return false;
 } 
 
@@ -82,8 +81,7 @@ bool getCredentials(const std::string message, std::vector<std::string>& credent
     return false;
 }
 
-// TODO: Can be eventually deleted
-std::string getUsername(std::string message, const std::string command)
+std::string getRecipientName(std::string message)
 {
     std::stringstream ss(message);
     std::string line;
@@ -93,39 +91,9 @@ std::string getUsername(std::string message, const std::string command)
     {
         messageInLines.push_back(line);
     }
+    if(messageInLines.size() < 3) return " ";
 
-    // Checks that the minimum for the amount of lines in order to get the username is there
-    if (messageInLines.size() < (command == "LIST" ? 2 : 3))
-    {
-        std::cerr << "Couldn't parse data" << std::endl;
-        return " ";
-    }
-
-    std::regex validUser("[a-z0-9]+");
-
-    if (command == "SEND" || command == "LOGIN")
-    {
-        if (std::regex_match(messageInLines[1], validUser) && messageInLines[1].size() <= 8 &&
-            std::regex_match(messageInLines[2], validUser) && messageInLines[2].size() <= 8)
-        {
-            return messageInLines[2];
-        }
-    }
-    else if (command == "LIST")
-    {
-        if (std::regex_match(messageInLines[1], validUser) && messageInLines[1].size() <= 8)
-        {
-            return messageInLines[1];
-        }
-    }
-    else if (command == "READ" || command == "DEL") // When read or delete -> return username and number of file to be interacted with
-    {
-        if (std::regex_match(messageInLines[1], validUser) && messageInLines[1].size() <= 8)
-        {
-            return messageInLines[1] + "\n" + messageInLines[2];
-        }
-    }
-    return " ";
+    return messageInLines[1]; //recipient
 }
 
 bool userExists(const std::string user)

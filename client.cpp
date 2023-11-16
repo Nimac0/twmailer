@@ -53,8 +53,7 @@ int main(int argc, char** argv)
             int size = strlen(buffer);
             trimEnd(&buffer[0], &size);
             // checks input request#
-            if (!strcmp(buffer, "LOGIN"))
-            {
+            if (!strcmp(buffer, "LOGIN")){
                 cmd = LOGIN;
                 strcpy(buffer, requestLogin().data());
             } else if(!strcmp(buffer, "SEND")){
@@ -147,7 +146,8 @@ int main(int argc, char** argv)
 
 void printActionsMenu()
 {
-    std::cout << "Choose an action to perform:\n |SEND|LIST|READ|DEL|QUIT|" << std::endl;
+    //TODO change visibility of commands
+    std::cout << "Choose an action to perform:\n |LOGIN|SEND|LIST|READ|DEL|QUIT|" << std::endl;
 }
 
 void trimEnd(char* buffer, int* size)

@@ -19,6 +19,7 @@ int LDAPClient::authenticateUser(const std::string user, const std::string passw
         // LOGIN_ERROR
         return -2;
     }
+    
     return LDAP_SUCCESS;
 }
 bool LDAPClient::setUpLDAPClient()
