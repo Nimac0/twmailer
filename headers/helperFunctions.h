@@ -15,6 +15,8 @@
 #include <filesystem>
 #include <limits>
 #include <set>
+#include <chrono>
+#include <future>
 
 namespace fs = std::filesystem;
 //-------------------FW DECLARATIONS--------------------------------
@@ -26,9 +28,13 @@ std::string getUsername(std::string message, const std::string command);
 bool userExists(const std::string user);
 
 bool createDirectory(const std::string recipientName);
-bool createTextFile(fs::path path, std::string content);
+bool createTextFile(fs::path path, const std::string content);
+bool createBlacklist();
 
-bool userBlacklisted(const std::string userIP);
+bool manageBlacklist(const std::string userIP);
+bool blacklistUser(const std::string userIP);
+bool userBlacklisted(const std::string user);
+bool removeFromBlacklist(const std::string userIP);
 
 std::fstream& gotoLine(std::fstream& file, unsigned int num);
 //------------------------------------------------------------------

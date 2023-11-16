@@ -13,7 +13,7 @@ int abortRequested = 0;
 int create_socket = -1;
 int new_socket = -1;
 
-void *clientCommunication(void *data);
+void *clientCommunication(void *data, const std::string clientIP);
 void signalHandler(int sig);
 void trimEnd(char* buffer, int* size);
 bool commandFound(const std::string message, const std::string command);
@@ -54,9 +54,11 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
     memset(&address, 0, sizeof(address));
+    
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
+    
     if (bind(create_socket, (struct sockaddr *)&address, sizeof(address)) == -1)
     {
         perror("bind error");
@@ -73,6 +75,7 @@ int main(int argc, char** argv)
     {
         printf("Waiting for connections...\n");
         addrlen = sizeof(struct sockaddr_in);
+        // Accept new client
         if ((new_socket = accept(create_socket,
                                 (struct sockaddr *)&cliaddress,
                                 &addrlen)) == -1)
@@ -91,7 +94,10 @@ int main(int argc, char** argv)
         inet_ntoa(cliaddress.sin_addr),
         ntohs(cliaddress.sin_port));
 
-        clientCommunication(&new_socket);
+        createBlacklist();
+        std::string clientIP(inet_ntoa(cliaddress.sin_addr));
+
+        clientCommunication(&new_socket, clientIP);
 
         new_socket = -1;
     }
@@ -110,19 +116,19 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
 }
 
-void *clientCommunication(void *data)
+void *clientCommunication(void *data, const std::string clientIP)
 {
     char buffer[BUF];
     int size;
     int *current_socket = (int *)data;
 
-    // int loginAttempts = 0;
+    unsigned int loginAttempts = 0;
 
     do
     {   
         memset(buffer, 0, sizeof buffer);
         size = recv(*current_socket, buffer, BUF - 1, 0);
-
+//-----------------ABORT AND ERROR HANDLING-----------------
         if (size == -1)
         {
             if (abortRequested)
@@ -141,71 +147,94 @@ void *clientCommunication(void *data)
             printf("Client closed remote socket\n");
             break;
         }
-
+//----------------------------------------------------------
         trimEnd(&buffer[0], &size);
         printf("Message received:\n%s\n", buffer);
-
         std::string message(buffer);
 
-        if (commandFound(message, "LOGIN")) {
+        if (commandFound(message, "LOGIN")) 
+        {
+            // Check if user is allowed to log in
+            if (userBlacklisted(clientIP))
+            {
+                if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1) 
+                {
+                    std::cerr << "Failed to send answer\n";
+                    return NULL;
+                }
+            }
+            // Log user in
             int returnCode = handleLogin(message);
-            std::cerr << "DEBUG: \n" << returnCode << std::endl;
             if (returnCode == LDAP_LOGIN_FAILED)
             {
-                std::cerr << "DEBUG: entered if\n" << std::endl;
-                // TODO:
-                // Increment attempts int (attempts must not be persisted, only the blacklist)
-                // if loginAttempts >= 3 --> blacklistUser();
+                loginAttempts++;
+                std::cerr << "N. of Attempts: " << loginAttempts << "\n";
+                if (loginAttempts >= 3)
+                {
+                    std::cerr << "In three attempts if\n";
+                    if (!manageBlacklist(clientIP))
+                    {
+                        std::cerr << "Error removing user from blacklist\n";
+                    }
+                    loginAttempts = 0;
+                }
             }
             else if (returnCode == LDAP_LOGIN_SUCCESS)
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
                 {
-                    perror("Failed to send answer");
+                    std::cerr << "Failed to send answer\n";
                     return NULL;
                 }
-                continue;
             } 
-        } else if (commandFound(message, "SEND")) {
+        } 
+        else if (commandFound(message, "SEND")) 
+        {
             if (handleSend(message))
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
                 {
-                    perror("send answer failed");
+                    std::cerr << "Failed to send answer\n";
                     return NULL;
                 }
                 continue;
             } 
-        } else if (commandFound(message, "LIST")) {
+        } 
+        else if (commandFound(message, "LIST")) 
+        {
             std::string emailList = handleList(getUsername(message, "LIST"));
             if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) 
             {
-                perror("send answer failed");
+                std::cerr << "Failed to send answer\n";
                 return NULL;
             }
             continue;
-        } else if (commandFound(message, "READ")) {
+        } 
+        else if (commandFound(message, "READ")) 
+        {
             std::string returnStr = handleRead(message);
-            if (returnStr.compare(" ") != 0) {
+            if (returnStr.compare(" ") != 0) 
+            {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
                 {
-                    perror("send answer failed");
+                    std::cerr << "Failed to send answer\n";
                     return NULL;
                 }
                 if (send(*current_socket, returnStr.c_str(), returnStr.size(), 0) == -1) 
                 {
-                    perror("send answer failed");
+                    std::cerr << "Failed to send answer\n";
                     return NULL;
                 }
                 continue;
             }
-        } else if (commandFound(message, "DEL")) 
+        } 
+        else if (commandFound(message, "DEL")) 
         {
             if (handleDelete(message)) 
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
                 {
-                    perror("send answer failed");
+                    std::cerr << "Failed to send answer\n";
                     return NULL;
                 }
                 continue;
@@ -215,7 +244,7 @@ void *clientCommunication(void *data)
         {
             if (send(*current_socket, "ERR\n", 4, 0) == -1) 
             {
-                perror("send ERR failed");
+                std::cerr << "Failed to send ERR\n";
                 return NULL;
             }
         }
@@ -291,6 +320,7 @@ void trimEnd(char* buffer, int* size)
 // Compares the first word of the message (command) to any command 
 bool commandFound(const std::string message, const std::string command)
 {
+    // https://www.geeksforgeeks.org/remove-extra-spaces-string/
     std::string cmd = "";
     for (auto &ch : message)
     {

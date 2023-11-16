@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -std=c++17 -Wall -Werror
-LIBS = -lldap -llber
+LIBS = -lldap -llber -pthread -fsanitize=address
 INC = -I./headers
 all: server client
 

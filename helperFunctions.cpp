@@ -133,7 +133,15 @@ bool createDirectory(const std::string recipientName)
 {
     if(!fs::exists("spool"))
     {
-        fs::create_directory("spool");
+        try
+        {
+            fs::create_directory("spool");
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error creating directory: " << e.what() << std::endl;
+            return false;
+        }
     }
     if (!userExists(recipientName))
     {
@@ -154,22 +162,96 @@ bool createDirectory(const std::string recipientName)
     return true;
 }
 
-bool createTextFile(fs::path path, std::string content)
+bool createTextFile(fs::path path, const std::string content)
 {
     fs::path filePath = "spool"/path;
     filePath.replace_extension(".txt");
     std::ofstream textFile(path);
-    
+
+    // Error opening file
     if (!textFile.is_open())
         return false;
     textFile << content;
     return true;
 }
 
-void blacklistUser()
+bool createBlacklist()
 {
+    if (fs::exists("blacklist.txt"))
+        return true;
+    std::ofstream textFile("blacklist.txt");
+    
+    if (!textFile.is_open())
+        return false;
+    return true;
+}
 
+bool manageBlacklist(const std::string userIP)
+{
+    if (!blacklistUser(userIP))
+    {
+        return false;
+    }
+    std::cerr << "User Blacklisted\n";
+    // TODO: Concurrency --> Shared resource
+    std::cerr << "Wait 1 min\n";
+    // TODO: Remove blacklist in a thread?
+    return removeFromBlacklist(userIP); 
+}
 
+bool blacklistUser(const std::string userIP)
+{
+    // Append userIP to end of file
+    // https://stackoverflow.com/questions/47014463/ofstream-open-modes-ate-vs-app
+    std::ofstream oFile("blacklist.txt", std::ios_base::ate|std::ios_base::in);
+    if (!oFile.is_open())
+        return false;
+    oFile << userIP + "\n";
+    oFile.close();
+    return true;
+}
+
+bool userBlacklisted(const std::string userIP)
+{
+    // Scan the file for userIP
+    // https://stackoverflow.com/questions/13996897/is-there-a-way-to-scan-a-txt-file-for-a-word-or-name-in-c
+    typedef std::istream_iterator<std::string> InIt;
+    if (std::find(InIt(std::ifstream("blacklist.txt") >> std::skipws), InIt(), userIP) != InIt())
+    {
+        return true;
+    }
+    return false;
+}
+
+bool removeFromBlacklist(const std::string userIP)
+{
+    std::ifstream inFile("blacklist.txt");
+    if (!inFile.is_open())
+    {
+        // TODO: Change --> if error opening file, user gets to keep trying...
+        return false;
+    }
+
+    // Write contents of file on to a string
+    std::string contents(std::istreambuf_iterator<char>{inFile}, {});
+    inFile.close();
+
+    size_t pos = contents.find(userIP);
+    if (pos == std::string::npos)
+        return false;
+
+    // Wait 1 minute
+    std::this_thread::sleep_for(std::chrono::minutes(1));
+    contents.erase(pos, userIP.length() + 1); // Plus one to delete the new line
+    
+    // Replace file contents
+    std::ofstream oFile("blacklist.txt");
+    if (!oFile.is_open())
+    {
+        return false;
+    }
+    oFile << contents;
+    return true;
 }
 
 // https://stackoverflow.com/questions/5207550/in-c-is-there-a-way-to-go-to-a-specific-line-in-a-text-file/5207600

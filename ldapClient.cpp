@@ -6,17 +6,18 @@ LDAPClient::LDAPClient()
 }
 
 //  0 --> Success
-// -1 --> Error
-// -2 --> Falied login
+// LDAP_LOGIN_FAILED -2
+// LDAP_LOGIN_ERROR -1
 int LDAPClient::authenticateUser(const std::string user, const std::string password)
 {
     if (setUpLDAPClient() != LDAP_SUCCESS)
     {
+        // LDAP_LOGIN_ERROR
         return -1;
     }
     if (bindUser(user, password) != LDAP_SUCCESS)
     {
-        // LOGIN_ERROR
+        // LDAP_LOGIN_FAILED
         return -2;
     }
     return LDAP_SUCCESS;
