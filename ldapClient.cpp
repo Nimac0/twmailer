@@ -1,10 +1,15 @@
 #include "ldapClient.h"
+#include <iostream>
 
 LDAPClient::LDAPClient()
 {
     
 }
 
+LDAPClient::~LDAPClient()
+{
+    ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+}
 //  0 --> Success
 // -1 --> Error
 // -2 --> Falied login

@@ -52,7 +52,8 @@ int main(int argc, char** argv)
         {
             int size = strlen(buffer);
             trimEnd(&buffer[0], &size);
-            // checks input request#
+            // checks input request
+            // TODO check if user is logged in  
             if (!strcmp(buffer, "LOGIN")){
                 cmd = LOGIN;
                 strcpy(buffer, requestLogin().data());

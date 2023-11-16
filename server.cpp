@@ -121,6 +121,7 @@ void *clientCommunication(void *data)
     int *current_socket = (int *)data;
     bool loggedIn = false;
     std::string *username = new std::string();
+    std::cerr << "new username ptr created" << std::endl;
     pthread_detach(pthread_self());
     std::cerr << "THREAD STARTED, ID: " << pthread_self() << std::endl;
 
@@ -151,14 +152,13 @@ void *clientCommunication(void *data)
         }
 
         trimEnd(&buffer[0], &size);
-        printf("Message received:\n%s\n", buffer);
+        //printf("Message received:\n%s\n", buffer);
 
         std::string message(buffer);
         if (commandFound(message, "LOGIN") && !loggedIn) {
             std::cout << "USERADRESS: " << username << std::endl;
             int returnCode = handleLogin(message, username);
             std::cout << "USERVALUE: " << *username << std::endl;
-            std::cout << "RETURN CODE: " << returnCode << std::endl;
             if (returnCode == LDAP_LOGIN_FAILED)
             {
                 // TODO:
@@ -176,7 +176,7 @@ void *clientCommunication(void *data)
                 }
                 continue;
             } 
-        } else if (commandFound(message, "SEND")) {
+        } else if (commandFound(message, "SEND") && loggedIn) {
             if (handleSend(message, *username))
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
@@ -186,7 +186,7 @@ void *clientCommunication(void *data)
                 }
                 continue;
             } 
-        } else if (commandFound(message, "LIST")) {
+        } else if (commandFound(message, "LIST") && loggedIn) {
             std::string emailList = handleList(*username);
             if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) 
             {
@@ -194,7 +194,7 @@ void *clientCommunication(void *data)
                 return NULL;
             }
             continue;
-        } else if (commandFound(message, "READ")) {
+        } else if (commandFound(message, "READ") && loggedIn) {
             std::string returnStr = handleRead(message, *username);
             if (returnStr.compare(" ") != 0) {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) 
@@ -202,14 +202,14 @@ void *clientCommunication(void *data)
                     perror("send answer failed");
                     return NULL;
                 }
-                if (send(*current_socket, returnStr.c_str(), returnStr.size(), 0) == -1) 
+                if (send(*current_socket, returnStr.c_str(), returnStr.size()+1, 0) == -1) 
                 {
                     perror("send answer failed");
                     return NULL;
                 }
                 continue;
             }
-        } else if (commandFound(message, "DEL")) 
+        } else if (commandFound(message, "DEL") && loggedIn) 
         {
             if (handleDelete(message, *username)) 
             {
@@ -231,7 +231,8 @@ void *clientCommunication(void *data)
         }
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
     
-    delete(username);
+    delete (username);
+    std::cerr << "new username ptr deleted" << std::endl;
 // Shut down and close socket connection
     if (*current_socket != -1)
     {
@@ -247,6 +248,7 @@ void *clientCommunication(void *data)
     }
 
     delete(current_socket);
+    std::cerr << "curr socket ptr deleted" << std::endl;
     return NULL;
 }
 

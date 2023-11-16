@@ -8,6 +8,7 @@ class LDAPClient
 {
     public:
         LDAPClient();
+        ~LDAPClient();
         int authenticateUser(std::string user, const std::string password);
 
     private:

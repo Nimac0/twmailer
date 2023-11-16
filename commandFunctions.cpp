@@ -16,11 +16,12 @@ int handleLogin(std::string message, std::string *username)
     if (!getCredentials(message, credentials))
     {
         return -1;
+        pthread_mutex_unlock(&loginMutex);
     }
     int returnCode = ldapClient.authenticateUser(credentials[0], credentials[1]);
     if(returnCode == 0)
     {
-        *username = credentials[0];// not sure if threadsafe
+        *username = credentials[0];
     }
     pthread_mutex_unlock(&loginMutex);
     return returnCode;
@@ -86,8 +87,11 @@ std::string handleList(const std::string username)
     }
 }
 //READ
-std::string handleRead(std::string message, std::string username)// TODO message does not just contain number need to fix
+std::string handleRead(std::string message, std::string username)
 {   
+    size_t pos = message.find('\n'); //cuts out command at the beginning
+    message.erase(0, pos + 1);
+
     fs::path filepath = fs::path("spool")/username/(message + ".txt"); //message should contain only the number of message
 
     std::ifstream file(filepath);
@@ -99,24 +103,23 @@ std::string handleRead(std::string message, std::string username)// TODO message
 
     std::string requestedMsg;
     std::string msgPiece;
-    int count = 0;
 
     while (std::getline(file, msgPiece))
     {
-        count++; //only gives out message/ignores previous 3 lines
-        std::cout << msgPiece << std::endl;
-        if(count > 3 && msgPiece != ".")
+        if(msgPiece != ".")
         {
             requestedMsg += msgPiece + "\n";
         }
     }
     file.close();
-
     return requestedMsg;
 }
 //DEL
 bool handleDelete(std::string message, std::string username)
 {
+    size_t pos = message.find('\n');
+    message.erase(0, pos + 1);
+
     fs::path filepath = fs::path("spool")/username/(message + ".txt"); //message should only contain number of message to be deleted
     if(fs::remove(filepath) == 0)
     {
