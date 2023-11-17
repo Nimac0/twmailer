@@ -15,6 +15,8 @@
 #include <filesystem>
 #include <limits>
 #include <set>
+#include <chrono>
+#include <thread>
 #include <pthread.h>
 
 namespace fs = std::filesystem;
@@ -29,9 +31,14 @@ std::string getRecipientName(std::string message);
 bool userExists(const std::string user);
 
 bool createDirectory(const std::string recipientName);
-bool createTextFile(fs::path path, std::string content);
+bool createTextFile(fs::path path, const std::string content);
+bool createBlacklist();
 
-bool userBlacklisted(const std::string userIP);
+bool manageBlacklist(const std::string userIP);
+bool blacklistUser(const std::string userIP);
+bool userBlacklisted(const std::string user);
+bool removeFromBlacklist(const std::string userIP);
 
 std::fstream& gotoLine(std::fstream& file, unsigned int num);
+bool validPort(const std::string port);
 //------------------------------------------------------------------

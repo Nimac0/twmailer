@@ -1,6 +1,7 @@
 #include "helperFunctions.h"
 
 pthread_mutex_t sendMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t blacklistMutex = PTHREAD_MUTEX_INITIALIZER;
 
 std::string processMsg(std::string clientRequest)
 {
@@ -93,7 +94,7 @@ std::string getRecipientName(std::string message)
     }
     if(messageInLines.size() < 3) return " ";
 
-    return messageInLines[1]; //recipient
+    return messageInLines[1]; // Recipient
 }
 
 bool userExists(const std::string user)
@@ -108,7 +109,15 @@ bool createDirectory(const std::string recipientName)
 {
     if(!fs::exists("spool"))
     {
-        fs::create_directory("spool");
+        try
+        {
+            fs::create_directory("spool");
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error creating directory: " << e.what() << std::endl;
+            return false;
+        }
     }
     if (!userExists(recipientName))
     {
@@ -129,22 +138,101 @@ bool createDirectory(const std::string recipientName)
     return true;
 }
 
-bool createTextFile(fs::path path, std::string content)
+bool createTextFile(fs::path path, const std::string content)
 {
     fs::path filePath = "spool"/path;
     filePath.replace_extension(".txt");
     std::ofstream textFile(path);
-    
+
+    // Error opening file
     if (!textFile.is_open())
         return false;
     textFile << content;
     return true;
 }
 
-void blacklistUser()
+bool createBlacklist()
 {
+    if (fs::exists("blacklist.txt"))
+        return true;
+    std::ofstream textFile("blacklist.txt");
+    
+    if (!textFile.is_open())
+        return false;
+    return true;
+}
 
+bool manageBlacklist(const std::string userIP) // Mutexes in helper backlistUser and removeFromBlacklist
+{
+    bool retValue = blacklistUser(userIP);
+    if (retValue == false)
+    {
+        return false;
+    }
+    std::cerr << "User Blacklisted\nWait 1 min\n"; // TODO: Remove
+    return removeFromBlacklist(userIP);
+}
 
+bool blacklistUser(const std::string userIP)
+{
+    // Append userIP to end of file (https://stackoverflow.com/questions/47014463/ofstream-open-modes-ate-vs-app)
+    pthread_mutex_lock(&blacklistMutex);
+    std::ofstream oFile("blacklist.txt", std::ios_base::ate|std::ios_base::in);
+    if (!oFile.is_open())
+    {
+        pthread_mutex_unlock(&blacklistMutex);
+        return false; 
+    }
+    oFile << userIP + "\n";
+    oFile.close();
+    pthread_mutex_unlock(&blacklistMutex);
+    return true;
+}
+
+bool userBlacklisted(const std::string userIP)
+{
+    // Scan the file for userIP (https://stackoverflow.com/questions/13996897/is-there-a-way-to-scan-a-txt-file-for-a-word-or-name-in-c)
+    typedef std::istream_iterator<std::string> InIt;
+    if (std::find(InIt(std::ifstream("blacklist.txt") >> std::skipws), InIt(), userIP) != InIt())
+    {
+        return true;
+    }
+    return false;
+}
+
+bool removeFromBlacklist(const std::string userIP)
+{
+    pthread_mutex_lock(&blacklistMutex);
+    // Read contents from file and remove userIP
+    std::ifstream inFile("blacklist.txt");
+    if (!inFile.is_open())
+    {
+        return false; // TODO: Change --> if error opening file, user gets to keep trying...
+    }
+    std::string contents(std::istreambuf_iterator<char>{inFile}, {});
+    inFile.close();
+    pthread_mutex_unlock(&blacklistMutex);
+
+    // Find the userIP
+    size_t pos = contents.find(userIP);
+    if (pos == std::string::npos) // If not found (not valid position)
+        return false;
+
+    // Wait 1 minute before erasing userIP
+    std::this_thread::sleep_for(std::chrono::minutes(1));
+    contents.erase(pos, userIP.length() + 1); // Plus one to delete the new line
+    
+    // Replace file contents
+    pthread_mutex_lock(&blacklistMutex);
+    std::ofstream oFile("blacklist.txt");
+    if (!oFile.is_open())
+    {
+        pthread_mutex_unlock(&blacklistMutex);
+        return false;
+    }
+    oFile << contents;
+    pthread_mutex_unlock(&blacklistMutex);
+    return true;
 }
 
 // https://stackoverflow.com/questions/5207550/in-c-is-there-a-way-to-go-to-a-specific-line-in-a-text-file/5207600
@@ -156,5 +244,11 @@ std::fstream& gotoLine(std::fstream& file, unsigned int num)
         file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
     }
     return file;
+}
+
+bool validPort(const std::string port)
+{
+    std::regex validPort("^((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{0,5})|([0-9]{1,4}))$"); // Range: 0 to 65535
+    return std::regex_match(port, validPort);
 }
 

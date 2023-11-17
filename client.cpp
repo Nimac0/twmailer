@@ -14,9 +14,7 @@ int main(int argc, char** argv)
     // int size;
     cmd cmd = DEFAULT;
 
-//-----------------------CONNECT TO SERVER-----------------------
-    if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-    {
+    if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("Socket error");
         return EXIT_FAILURE;
     }
@@ -25,24 +23,18 @@ int main(int argc, char** argv)
     address.sin_family = AF_INET;
     address.sin_port = htons(PORT);
 
-    if (argc < 2)
-    {
+    // If there is no IP adress given, set default
+    if (argc < 2) {
         inet_aton("127.0.0.1", &address.sin_addr);
-    }
-    else
-    {
+    } else {
         inet_aton(argv[1], &address.sin_addr);
     }
-    if (connect(create_socket,
-                (struct sockaddr *)&address,
-                sizeof(address)) == -1)
-    {
+    if (connect(create_socket, (struct sockaddr *)&address, sizeof(address)) == -1) {
         perror("Connect error - no server available");
         return EXIT_FAILURE;
     }
-    printf("Connection with server (%s) established\n",
-            inet_ntoa(address.sin_addr));
-//--------------------------------------------------------------
+    printf("Connection with server (%s) established\n", inet_ntoa(address.sin_addr));
+
     do
     {
         printActionsMenu();
