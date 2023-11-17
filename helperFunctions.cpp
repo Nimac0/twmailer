@@ -3,7 +3,7 @@
 pthread_mutex_t sendMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t blacklistMutex = PTHREAD_MUTEX_INITIALIZER;
 
-std::string processMsg(std::string clientRequest)
+std::string processMessage(std::string clientRequest)
 {
     size_t pos = 0;
     std::vector <std::string> dataToBeProcessed;
@@ -24,13 +24,15 @@ std::string processMsg(std::string clientRequest)
     return " ";
 }
 
-bool addMsg(const std::string message, const std::string recipient)
+bool addMessage(const std::string message, const std::string recipient, const std::string directoryName)
 {
     pthread_mutex_lock(&sendMutex); // locks send so two messages cant have same number
     // Check which number index is at
     std::ifstream inFile("spool/" + recipient + "/index.txt");
     if (!inFile.is_open())
+    {
         return false;
+    }
     std::string lastEntry;
     std::getline(inFile, lastEntry);
 
@@ -38,20 +40,20 @@ bool addMsg(const std::string message, const std::string recipient)
     fs::path basePath = "spool";
     fs::path messageFilePath = basePath / recipient / (lastEntry + ".txt");
 
-    if (createTextFile(messageFilePath, message))
+    if (createTextFile(messageFilePath, message, directoryName))
     {  
         // Rewrite index with the newly incremented latest entry
         std::ofstream outIndex("spool/" + recipient + "/index.txt");
         if (!outIndex.is_open())
+        {
             return false;
+        }
         outIndex << std::to_string(1 + std::stoi(lastEntry));
         outIndex.close();
-
         pthread_mutex_unlock(&sendMutex); 
          
         return true;
     }
-
     pthread_mutex_unlock(&sendMutex); 
     return false;
 } 
@@ -92,26 +94,27 @@ std::string getRecipientName(std::string message)
     {
         messageInLines.push_back(line);
     }
-    if(messageInLines.size() < 3) return " ";
-
+    if (messageInLines.size() < 3)
+    {
+        return " ";
+    }
     return messageInLines[1]; // Recipient
 }
 
-bool userExists(const std::string user)
+bool userExists(const std::string user, const std::string directoryName)
 {
-    fs::path basePath = "spool";
-    fs::path userPath = basePath/user;
+    fs::path path = directoryName + "/" + user;
     fs::directory_entry uentry{user};
-    return is_directory(userPath);
+    return is_directory(path);
 }
 
-bool createDirectory(const std::string recipientName)
+bool createDirectory(const std::string recipientName, const std::string directoryName)
 {
-    if(!fs::exists("spool"))
+    if(!fs::exists(directoryName))
     {
         try
         {
-            fs::create_directory("spool");
+            fs::create_directory(directoryName);
         }
         catch (const std::exception &e)
         {
@@ -119,15 +122,14 @@ bool createDirectory(const std::string recipientName)
             return false;
         }
     }
-    if (!userExists(recipientName))
+    if (!userExists(recipientName, directoryName))
     {
-        fs::path basePath = "spool";
-        fs::path userPath = basePath / recipientName;
+        fs::path path = directoryName + "/" +  recipientName;
 
         try
         {
-            fs::create_directory(userPath);
-            return createTextFile(userPath / "index.txt", "0");
+            fs::create_directory(path);
+            return createTextFile(path / "index.txt", "0", directoryName);
         }
         catch (const std::exception &e)
         {
@@ -138,11 +140,11 @@ bool createDirectory(const std::string recipientName)
     return true;
 }
 
-bool createTextFile(fs::path path, const std::string content)
+bool createTextFile(fs::path path, const std::string content, const std::string directoryName)
 {
-    fs::path filePath = "spool"/path;
-    filePath.replace_extension(".txt");
-    std::ofstream textFile(path);
+    fs::path filePath = directoryName / path;
+    path.replace_extension(".txt");
+    std::ofstream textFile(filePath);
 
     // Error opening file
     if (!textFile.is_open())

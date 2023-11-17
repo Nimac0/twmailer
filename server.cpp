@@ -3,18 +3,24 @@
 namespace fs = std::filesystem;
 
 #define BUF 1024
-#define PORT 6543 // TODO: Remove
 #define BACKLOG 5 // Count of waiting connections allowed
 
 #define LDAP_LOGIN_FAILED -2
 #define LDAP_LOGIN_ERROR -1
 #define LDAP_LOGIN_SUCCESS 0
 
+typedef struct 
+{
+    int *new_client;
+    std::string clientIP;
+    std::string directoryName;
+} ThreadArgs;
+
 int abortRequested = 0;
 int create_socket = -1;
 int new_socket = -1;
 
-void *clientCommunication(void *data);
+void *clientCommunication(void *args);
 void signalHandler(int sig);
 void trimEnd(char* buffer, int* size);
 bool commandFound(const std::string message, const std::string command);
@@ -23,11 +29,11 @@ int main(int argc, char** argv)
 {
     if (argc < 2 || !validPort(std::string(argv[1]))) // argc < 2 for program name and port
     {
-        std::cerr << "Error: Invalid Input\nusage: ./server <port>\n";
+        std::cerr << "Error: Invalid Input\nUsage: ./server <port> <mail-spool-directoryname>\n";
         return EXIT_FAILURE;
     } 
 
-    //--------------SET UP SOCKET CONNECTION-------------
+    /*-------------- SET UP SOCKET CONNECTION -------------*/
 
     socklen_t addrlen;
     struct sockaddr_in address, cliaddress;
@@ -52,7 +58,8 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    //--------------INIT ADDRESS, BIND, LISTEN-------------
+    /*-------------- INIT ADDRESS, BIND & LISTEN -------------*/
+
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
@@ -69,7 +76,8 @@ int main(int argc, char** argv)
 
     createBlacklist();
 
-    //-----------------ACCEPT NEW CLIENT-----------------
+    /*----------------- ACCEPT NEW CLIENT -----------------*/
+
     while(!abortRequested)
     {
         printf("Waiting for connections...\n");
@@ -84,7 +92,7 @@ int main(int argc, char** argv)
         }
         printf("Client connected from %s:%d...\n", inet_ntoa(cliaddress.sin_addr), ntohs(cliaddress.sin_port));
         // TODO: Pass on the clientIP -> std::string(inet_ntoa(cliaddress.sin_addr))?
-        if((pthread_create(&newThread, NULL, clientCommunication, new int(new_socket))) != 0)// makes new thread, new int -> no race conditions bc of overwriting
+        if((pthread_create(&newThread, NULL, clientCommunication, static_cast<void*>(new ThreadArgs{new int(new_socket), std::string(inet_ntoa(cliaddress.sin_addr)), std::string(argv[2])}))) != 0)// makes new thread, new int -> no race conditions bc of overwriting
         {
             perror("thread error");
         }
@@ -104,14 +112,18 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
 }
 
-void *clientCommunication(void *data)
+void *clientCommunication(void *args)
 {
+    ThreadArgs *threadArgs = static_cast<ThreadArgs*>(args);
+    // TODO: Check if cast is successful
+    int *current_socket = threadArgs->new_client;
+    std::string clientIP = threadArgs->clientIP;
+    std::string directoryName = threadArgs->directoryName;
+
     char buffer[BUF];
     int size;
-    int *current_socket = (int *)data;
-    // std::string message;
-    bool loggedIn = false;
     std::string *username = new std::string();
+    bool loggedIn = false;
     std::cerr << "new username ptr created" << std::endl;
     pthread_detach(pthread_self());
     std::cerr << "THREAD STARTED, ID: " << pthread_self() << std::endl;
@@ -129,7 +141,9 @@ void *clientCommunication(void *data)
             message += std::string(buffer);
         }
         */
-    //-----------------ABORT AND ERROR HANDLING-----------------
+
+    /*----------------- ABORT AND ERROR HANDLING -----------------*/
+
         if (size == -1) {
             if (abortRequested) {
                 perror("Receive error after aborted");
@@ -142,13 +156,14 @@ void *clientCommunication(void *data)
             printf("Client closed remote socket\n");
             break;
         }
-    //----------------------------------------------------------
+
+    /*----------------------------------------------------------*/
+
         trimEnd(&buffer[0], &size);
-        // printf("Message received:\n%s\n", buffer);
         std::string message(buffer);
         if (commandFound(message, "LOGIN") && !loggedIn) {
-            // TODO: Disable any recieving until this period is over
-            if (userBlacklisted(std::string("debug"))) 
+            // TODO: Disable any recieving until the 1 minute is over
+            if (userBlacklisted(std::string(clientIP))) 
             {
                 if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1) {
                     std::cerr << "Failed to send answer\n";
@@ -166,7 +181,7 @@ void *clientCommunication(void *data)
                 std::cerr << "N. of Attempts: " << loginAttempts << "\n"; // TODO: Remove
                 if (loginAttempts >= 3) {
                     std::cerr << "In three attempts if\n"; // TODO: Remove
-                    if (!manageBlacklist(std::string("debug"))) {
+                    if (!manageBlacklist(std::string(clientIP))) {
                         std::cerr << "Error removing user from blacklist\n"; // TODO: Remove
                     }
                     loginAttempts = 0;
@@ -182,7 +197,7 @@ void *clientCommunication(void *data)
                 continue;
             } 
         } else if (commandFound(message, "SEND") && loggedIn) {
-            if (handleSend(message, *username))
+            if (handleSend(message, *username, clientIP))
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) {
                     std::cerr << "Failed to send answer\n";
@@ -230,7 +245,9 @@ void *clientCommunication(void *data)
     } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
     
     delete (username);
+    delete threadArgs;
     std::cerr << "new username ptr deleted" << std::endl;
+
 // Shut down and close socket connection
     if (*current_socket != -1)
     {

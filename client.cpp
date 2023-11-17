@@ -1,17 +1,24 @@
 #include "clientRequests.h"
 
 #define BUF 1024
-#define PORT 6543
 
 void printActionsMenu();
 void trimEnd(char* buffer, int* size);
+bool validPort(const std::string port);
+bool validIP(const std::string ip);
 
 int main(int argc, char** argv)
 {
+    if (argc < 3 || !validIP(std::string(argv[1])) || !validPort(std::string(argv[2])))
+    {
+        std::cerr << "Error: Invalid Input\nUsage: ./client <ip> <port>\n";
+        return EXIT_FAILURE;
+    } 
     int create_socket;
     char buffer[BUF];
     struct sockaddr_in address;
-    // int size;
+    int port = std::stoi(argv[2]);
+    // int size; TODO: Remove? Why is it commented out?
     cmd cmd = DEFAULT;
 
     if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -21,14 +28,9 @@ int main(int argc, char** argv)
 
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_port = htons(PORT);
+    address.sin_port = htons(port);
+    inet_aton(argv[1], &address.sin_addr);
 
-    // If there is no IP adress given, set default
-    if (argc < 2) {
-        inet_aton("127.0.0.1", &address.sin_addr);
-    } else {
-        inet_aton(argv[1], &address.sin_addr);
-    }
     if (connect(create_socket, (struct sockaddr *)&address, sizeof(address)) == -1) {
         perror("Connect error - no server available");
         return EXIT_FAILURE;
@@ -156,3 +158,25 @@ void trimEnd(char* buffer, int* size)
         buffer[*size] = 0;
     }
 }
+
+bool validPort(const std::string port)
+{
+    std::regex validPort("^((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{0,5})|([0-9]{1,4}))$"); // Range: 0 to 65535
+    return std::regex_match(port, validPort);
+}
+
+bool validIP(const std::string ip)
+{
+    std::regex validIP("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])"); // IPv4
+    return std::regex_match(ip, validIP);
+}
+
+// Removed: 
+/*
+// If there is no IP adress given, set default
+    if (argc < 2) {
+        inet_aton("127.0.0.1", &address.sin_addr);
+    } else {
+        inet_aton(argv[1], &address.sin_addr);
+    }
+*/
