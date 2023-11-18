@@ -27,12 +27,13 @@ int handleLogin(std::string message, std::string *username)
     return returnCode;
 }
 //SEND
-bool handleSend(const std::string message, std::string sender)
+bool handleSend(const std::string message, const std::string username, const std::string directoryName)
 {
-    if ((processMsg(message).compare(" ") == 0)) return 0; // return 0 when error occurs
+    if((processMessage(message).compare(" ") == 0)) return 0; // return 0 when error occurs
 
-    if (createDirectory(getRecipientName(message))) {
-        addMsg(processMsg(message), getRecipientName(message));
+    if (createDirectory(getRecipientName(message), directoryName)) 
+    {
+        addMessage(processMessage(message), getRecipientName(message), directoryName);
         return 1;
     }
     return 0;

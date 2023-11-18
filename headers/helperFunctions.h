@@ -15,23 +15,30 @@
 #include <filesystem>
 #include <limits>
 #include <set>
+#include <chrono>
+#include <thread>
 #include <pthread.h>
 
 namespace fs = std::filesystem;
 
 //-------------------FW DECLARATIONS--------------------------------
 
-std::string processMsg(std::string clientRequest);
-bool addMsg(const std::string message, const std::string user);
+std::string processMessage(std::string clientRequest);
+bool addMessage(const std::string message, const std::string user, const std::string directoryName);
 
 bool getCredentials(const std::string message, std::vector<std::string>& credentialsVector);
 std::string getRecipientName(std::string message);
-bool userExists(const std::string user);
+bool userExists(const std::string user, const std::string directoryName);
 
-bool createDirectory(const std::string recipientName);
-bool createTextFile(fs::path path, std::string content);
+bool createDirectory(const std::string recipientName, const std::string directoryName);
+bool createTextFile(fs::path path, const std::string content, const std::string directoryName);
+bool createBlacklist();
 
-bool userBlacklisted(const std::string userIP);
+bool manageBlacklist(const std::string userIP);
+bool blacklistUser(const std::string userIP);
+bool userBlacklisted(const std::string user);
+bool removeFromBlacklist(const std::string userIP);
 
 std::fstream& gotoLine(std::fstream& file, unsigned int num);
+bool validPort(const std::string port);
 //------------------------------------------------------------------
