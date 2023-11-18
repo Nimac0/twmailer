@@ -19,7 +19,7 @@ int handleLogin(std::string message, std::string *username)
         pthread_mutex_unlock(&loginMutex);
     }
     int returnCode = ldapClient.authenticateUser(credentials[0], credentials[1]);
-    if(returnCode == 0)
+    if (returnCode == 0)
     {
         *username = credentials[0];
     }
@@ -27,9 +27,9 @@ int handleLogin(std::string message, std::string *username)
     return returnCode;
 }
 //SEND
-bool handleSend(const std::string message, std::string)
+bool handleSend(const std::string message, std::string sender)
 {
-    if((processMsg(message).compare(" ") == 0)) return 0; // return 0 when error occurs
+    if ((processMsg(message).compare(" ") == 0)) return 0; // return 0 when error occurs
 
     if (createDirectory(getRecipientName(message))) {
         addMsg(processMsg(message), getRecipientName(message));
@@ -42,9 +42,9 @@ std::string handleList(const std::string username)
 {
     // Count of msgs (0 is no message or user unknown)
     int count = 0;
-
     fs::path basePath = "spool";
     fs::path userPath = basePath / username;
+    if(!fs::exists(userPath)) return std::to_string(count);
 
     std::vector<std::string> subjectList;
 

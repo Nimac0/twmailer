@@ -6,7 +6,7 @@ std::string processMsg(std::string clientRequest)
 {
     size_t pos = 0;
     std::vector <std::string> dataToBeProcessed;
-    for(int i = 0; i < 2; i++) { // SEND[0] recipient[1]
+    for(int i = 0; i < 3; i++) { // SEND[0] recipient[1] subject[2]
         if((pos = clientRequest.find('\n')) == std::string::npos) {
             std::cerr << "couldnt parse data";
             return " ";
@@ -17,8 +17,9 @@ std::string processMsg(std::string clientRequest)
     
     std::regex validUser("[a-z0-9]+"); // Double check incase of malicious user skipping client and accessing server directly
     
-    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8) {
-        return dataToBeProcessed[1] + '\n' + clientRequest;
+    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
+    && dataToBeProcessed[2].length() <= 80) {
+        return dataToBeProcessed[1] + '\n' + dataToBeProcessed[2] + '\n' + clientRequest;
     }
     return " ";
 }
