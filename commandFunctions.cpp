@@ -19,7 +19,7 @@ int handleLogin(std::string message, std::string *username)
         pthread_mutex_unlock(&loginMutex);
     }
     int returnCode = ldapClient.authenticateUser(credentials[0], credentials[1]);
-    if(returnCode == 0)
+    if (returnCode == 0)
     {
         *username = credentials[0];
     }
@@ -27,25 +27,26 @@ int handleLogin(std::string message, std::string *username)
     return returnCode;
 }
 //SEND
-bool handleSend(const std::string message, const std::string username, const std::string directoryName)
+bool handleSend(const std::string message, const std::string sender, const std::string directoryName)
 {
-    if((processMessage(message).compare(" ") == 0)) return 0; // return 0 when error occurs
+    std::string newMessage = processMessage(message, sender);
+    std::cout << newMessage << std::endl;
+    if(newMessage.compare(" ") == 0) return 0; // return 0 when error occurs
 
     if (createDirectory(getRecipientName(message), directoryName)) 
     {
-        addMessage(processMessage(message), getRecipientName(message), directoryName);
+        addMessage(newMessage, getRecipientName(message), directoryName);
         return 1;
     }
     return 0;
 }
 //LIST
-std::string handleList(const std::string username)
+std::string handleList(const std::string username, const std::string directoryName)
 {
     // Count of msgs (0 is no message or user unknown)
     int count = 0;
-
-    fs::path basePath = "spool";
-    fs::path userPath = basePath / username;
+    fs::path userPath = fs::path(directoryName) / username;
+    if(!fs::exists(userPath)) return "0\n";
 
     std::vector<std::string> subjectList;
 
@@ -88,12 +89,12 @@ std::string handleList(const std::string username)
     }
 }
 //READ
-std::string handleRead(std::string message, std::string username)
+std::string handleRead(std::string message, const std::string username, const std::string directoryName)
 {   
     size_t pos = message.find('\n'); //cuts out command at the beginning
     message.erase(0, pos + 1);
 
-    fs::path filepath = fs::path("spool")/username/(message + ".txt"); //message should contain only the number of message
+    fs::path filepath = fs::path(directoryName)/username/(message + ".txt"); //message should contain only the number of message
 
     std::ifstream file(filepath);
 
@@ -116,12 +117,12 @@ std::string handleRead(std::string message, std::string username)
     return requestedMsg;
 }
 //DEL
-bool handleDelete(std::string message, std::string username)
+bool handleDelete(std::string message, const std::string username, const std::string directoryName)
 {
     size_t pos = message.find('\n');
     message.erase(0, pos + 1);
 
-    fs::path filepath = fs::path("spool")/username/(message + ".txt"); //message should only contain number of message to be deleted
+    fs::path filepath = fs::path(directoryName)/username/(message + ".txt"); //message should only contain number of message to be deleted
     if(fs::remove(filepath) == 0)
     {
         std::cerr << "file deletion error occured" << std::endl;

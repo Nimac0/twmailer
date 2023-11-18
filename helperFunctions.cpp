@@ -3,11 +3,11 @@
 pthread_mutex_t sendMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t blacklistMutex = PTHREAD_MUTEX_INITIALIZER;
 
-std::string processMessage(std::string clientRequest)
+std::string processMessage(std::string clientRequest, std::string sender)
 {
     size_t pos = 0;
     std::vector <std::string> dataToBeProcessed;
-    for(int i = 0; i < 2; i++) { // SEND[0] recipient[1]
+    for(int i = 0; i < 3; i++) { // SEND[0] recipient[1] subject[2]
         if((pos = clientRequest.find('\n')) == std::string::npos) {
             std::cerr << "couldnt parse data";
             return " ";
@@ -18,8 +18,9 @@ std::string processMessage(std::string clientRequest)
     
     std::regex validUser("[a-z0-9]+"); // Double check incase of malicious user skipping client and accessing server directly
     
-    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8) {
-        return dataToBeProcessed[1] + '\n' + clientRequest;
+    if(std::regex_match(dataToBeProcessed[1], validUser) && dataToBeProcessed[1].size() <= 8
+    && dataToBeProcessed[2].length() <= 80) {
+        return sender + '\n' + dataToBeProcessed[2] + '\n' + clientRequest;
     }
     return " ";
 }
@@ -28,7 +29,7 @@ bool addMessage(const std::string message, const std::string recipient, const st
 {
     pthread_mutex_lock(&sendMutex); // locks send so two messages cant have same number
     // Check which number index is at
-    std::ifstream inFile("spool/" + recipient + "/index.txt");
+    std::ifstream inFile(directoryName + "/" + recipient + "/index.txt");
     if (!inFile.is_open())
     {
         return false;
@@ -37,13 +38,12 @@ bool addMessage(const std::string message, const std::string recipient, const st
     std::getline(inFile, lastEntry);
 
     // Create message.txt file
-    fs::path basePath = "spool";
-    fs::path messageFilePath = basePath / recipient / (lastEntry + ".txt");
+    fs::path messageFilePath = fs::path(directoryName) / recipient / (lastEntry + ".txt");
 
-    if (createTextFile(messageFilePath, message, directoryName))
+    if (createTextFile(messageFilePath, message))
     {  
         // Rewrite index with the newly incremented latest entry
-        std::ofstream outIndex("spool/" + recipient + "/index.txt");
+        std::ofstream outIndex(directoryName + "/" + recipient + "/index.txt");
         if (!outIndex.is_open())
         {
             return false;
@@ -110,41 +110,34 @@ bool userExists(const std::string user, const std::string directoryName)
 
 bool createDirectory(const std::string recipientName, const std::string directoryName)
 {
-    if(!fs::exists(directoryName))
+    if(!fs::create_directory(directoryName))
     {
-        try
-        {
-            fs::create_directory(directoryName);
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << "Error creating directory: " << e.what() << std::endl;
-            return false;
-        }
+       std::cerr << "couldnt create directory/already exists" << std::endl;
     }
-    if (!userExists(recipientName, directoryName))
-    {
-        fs::path path = directoryName + "/" +  recipientName;
+    
+    if (userExists(recipientName, directoryName)) {
+        return true;
+    }
 
-        try
-        {
-            fs::create_directory(path);
-            return createTextFile(path / "index.txt", "0", directoryName);
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << "Error creating directory: " << e.what() << std::endl;
-            return false;
-        }
+    fs::path path = directoryName + "/" +  recipientName;
+
+    try
+    {
+        fs::create_directory(path);
+        return createTextFile(path / "index.txt", "0");
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Error creating directory: " << e.what() << std::endl;
+        return false;
     }
     return true;
 }
 
-bool createTextFile(fs::path path, const std::string content, const std::string directoryName)
+bool createTextFile(fs::path path, const std::string content)
 {
-    fs::path filePath = directoryName / path;
     path.replace_extension(".txt");
-    std::ofstream textFile(filePath);
+    std::ofstream textFile(path);
 
     // Error opening file
     if (!textFile.is_open())
@@ -195,7 +188,8 @@ bool userBlacklisted(const std::string clientIP)
 {
     // Scan the file for clientIP (https://stackoverflow.com/questions/13996897/is-there-a-way-to-scan-a-txt-file-for-a-word-or-name-in-c)
     typedef std::istream_iterator<std::string> InIt;
-    if (std::find(InIt(std::ifstream("blacklist.txt") >> std::skipws), InIt(), clientIP) != InIt())
+    auto blacklist = std::ifstream("blacklist.txt") >> std::skipws;
+    if (std::find(InIt(blacklist), InIt(), clientIP) != InIt())
     {
         return true;
     }
