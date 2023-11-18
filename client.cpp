@@ -18,7 +18,6 @@ int main(int argc, char** argv)
     char buffer[BUF];
     struct sockaddr_in address;
     int port = std::stoi(argv[2]);
-    // int size; TODO: Remove? Why is it commented out?
     cmd cmd = DEFAULT;
 
     if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -46,8 +45,7 @@ int main(int argc, char** argv)
         {
             int size = strlen(buffer);
             trimEnd(&buffer[0], &size);
-            // checks input request
-            // TODO check if user is logged in  
+            // checks input request 
             if (!strcmp(buffer, "LOGIN")){
                 cmd = LOGIN;
                 strcpy(buffer, requestLogin().data());
@@ -141,7 +139,6 @@ int main(int argc, char** argv)
 
 void printActionsMenu()
 {
-    //TODO change visibility of commands
     std::cout << "Choose an action to perform:\n |LOGIN|SEND|LIST|READ|DEL|QUIT|" << std::endl;
 }
 

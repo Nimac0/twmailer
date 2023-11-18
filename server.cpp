@@ -165,10 +165,12 @@ void *clientCommunication(void *args)
             // TODO: Disable any recieving until the 1 minute is over
             if (userBlacklisted(std::string(clientIP))) 
             {
-                if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1) {
+                if (send(*current_socket, "ERR\n", 4, 0) == -1) {
                     std::cerr << "Failed to send answer\n";
                     return NULL;
                 }
+
+                continue;
             }
             std::cout << "USERADRESS: " << username << std::endl;
             int returnCode = handleLogin(message, username);
@@ -197,7 +199,7 @@ void *clientCommunication(void *args)
                 continue;
             } 
         } else if (commandFound(message, "SEND") && loggedIn) {
-            if (handleSend(message, *username, clientIP))
+            if (handleSend(message, *username, directoryName))
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) {
                     std::cerr << "Failed to send answer\n";
@@ -206,14 +208,14 @@ void *clientCommunication(void *args)
                 continue;
             } 
         } else if (commandFound(message, "LIST") && loggedIn) {
-            std::string emailList = handleList(*username);
+            std::string emailList = handleList(*username, directoryName);
             if (send(*current_socket, emailList.c_str(), emailList.length(), 0) == -1) {
                 std::cerr << "Failed to send answer\n";
                 return NULL;
             }
             continue;
         } else if (commandFound(message, "READ") && loggedIn) {
-            std::string returnStr = handleRead(message, *username);
+            std::string returnStr = handleRead(message, *username, directoryName);
             if (returnStr.compare(" ") != 0) {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) {
                     std::cerr << "Failed to send answer\n";
@@ -226,7 +228,7 @@ void *clientCommunication(void *args)
                 continue;
             }
         } else if (commandFound(message, "DEL") && loggedIn) {
-            if (handleDelete(message, *username)) 
+            if (handleDelete(message, *username, directoryName)) 
             {
                 if (send(*current_socket, "OK\n", 3, 0) == -1) {
                     std::cerr << "Failed to send answer\n";
