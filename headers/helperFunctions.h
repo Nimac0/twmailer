@@ -34,10 +34,10 @@ bool createDirectory(const std::string recipientName, const std::string director
 bool createTextFile(fs::path path, const std::string content, const std::string directoryName);
 bool createBlacklist();
 
-bool manageBlacklist(const std::string userIP);
-bool blacklistUser(const std::string userIP);
+bool manageBlacklist(const std::string clientIP);
+bool blacklistUser(const std::string clientIP);
 bool userBlacklisted(const std::string user);
-bool removeFromBlacklist(const std::string userIP);
+bool removeFromBlacklist(const std::string clientIP);
 
 std::fstream& gotoLine(std::fstream& file, unsigned int num);
 bool validPort(const std::string port);

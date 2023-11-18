@@ -164,20 +164,20 @@ bool createBlacklist()
     return true;
 }
 
-bool manageBlacklist(const std::string userIP) // Mutexes in helper backlistUser and removeFromBlacklist
+bool manageBlacklist(const std::string clientIP) // Mutexes in helper backlistUser and removeFromBlacklist
 {
-    bool retValue = blacklistUser(userIP);
+    bool retValue = blacklistUser(clientIP);
     if (retValue == false)
     {
         return false;
     }
     std::cerr << "User Blacklisted\nWait 1 min\n"; // TODO: Remove
-    return removeFromBlacklist(userIP);
+    return removeFromBlacklist(clientIP);
 }
 
-bool blacklistUser(const std::string userIP)
+bool blacklistUser(const std::string clientIP)
 {
-    // Append userIP to end of file (https://stackoverflow.com/questions/47014463/ofstream-open-modes-ate-vs-app)
+    // Append clientIP to end of file (https://stackoverflow.com/questions/47014463/ofstream-open-modes-ate-vs-app)
     pthread_mutex_lock(&blacklistMutex);
     std::ofstream oFile("blacklist.txt", std::ios_base::ate|std::ios_base::in);
     if (!oFile.is_open())
@@ -185,27 +185,27 @@ bool blacklistUser(const std::string userIP)
         pthread_mutex_unlock(&blacklistMutex);
         return false; 
     }
-    oFile << userIP + "\n";
+    oFile << clientIP + "\n";
     oFile.close();
     pthread_mutex_unlock(&blacklistMutex);
     return true;
 }
 
-bool userBlacklisted(const std::string userIP)
+bool userBlacklisted(const std::string clientIP)
 {
-    // Scan the file for userIP (https://stackoverflow.com/questions/13996897/is-there-a-way-to-scan-a-txt-file-for-a-word-or-name-in-c)
+    // Scan the file for clientIP (https://stackoverflow.com/questions/13996897/is-there-a-way-to-scan-a-txt-file-for-a-word-or-name-in-c)
     typedef std::istream_iterator<std::string> InIt;
-    if (std::find(InIt(std::ifstream("blacklist.txt") >> std::skipws), InIt(), userIP) != InIt())
+    if (std::find(InIt(std::ifstream("blacklist.txt") >> std::skipws), InIt(), clientIP) != InIt())
     {
         return true;
     }
     return false;
 }
 
-bool removeFromBlacklist(const std::string userIP)
+bool removeFromBlacklist(const std::string clientIP)
 {
     pthread_mutex_lock(&blacklistMutex);
-    // Read contents from file and remove userIP
+    // Read contents from file and remove clientIP
     std::ifstream inFile("blacklist.txt");
     if (!inFile.is_open())
     {
@@ -215,14 +215,14 @@ bool removeFromBlacklist(const std::string userIP)
     inFile.close();
     pthread_mutex_unlock(&blacklistMutex);
 
-    // Find the userIP
-    size_t pos = contents.find(userIP);
+    // Find the clientIP
+    size_t pos = contents.find(clientIP);
     if (pos == std::string::npos) // If not found (not valid position)
         return false;
 
-    // Wait 1 minute before erasing userIP
+    // Wait 1 minute before erasing clientIP
     std::this_thread::sleep_for(std::chrono::minutes(1));
-    contents.erase(pos, userIP.length() + 1); // Plus one to delete the new line
+    contents.erase(pos, clientIP.length() + 1); // Plus one to delete the new line
     
     // Replace file contents
     pthread_mutex_lock(&blacklistMutex);

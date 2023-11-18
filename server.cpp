@@ -27,7 +27,7 @@ bool commandFound(const std::string message, const std::string command);
 
 int main(int argc, char** argv)
 {
-    if (argc < 2 || !validPort(std::string(argv[1]))) // argc < 2 for program name and port
+    if (argc != 3 || !validPort(std::string(argv[1]))) // argc < 2 for program name and port
     {
         std::cerr << "Error: Invalid Input\nUsage: ./server <port> <mail-spool-directoryname>\n";
         return EXIT_FAILURE;
@@ -163,24 +163,20 @@ void *clientCommunication(void *args)
         std::string message(buffer);
         if (commandFound(message, "LOGIN") && !loggedIn) {
             // TODO: Disable any recieving until the 1 minute is over
-            if (userBlacklisted(std::string(clientIP))) 
-            {
-                if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1) {
-                    std::cerr << "Failed to send answer\n";
-                    return NULL;
-                }
-            }
             std::cout << "USERADRESS: " << username << std::endl;
             int returnCode = handleLogin(message, username);
             std::cout << "USERVALUE: " << *username << std::endl; // TODO: Remove
             std::cerr << "RETURN CODE: " << returnCode << std::endl; // TODO: Remove
-
             if (returnCode == LDAP_LOGIN_FAILED)
             {
                 loginAttempts++;
                 std::cerr << "N. of Attempts: " << loginAttempts << "\n"; // TODO: Remove
                 if (loginAttempts >= 3) {
                     std::cerr << "In three attempts if\n"; // TODO: Remove
+                    if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1) {
+                        std::cerr << "Failed to send answer\n";
+                        return NULL;
+                    }
                     if (!manageBlacklist(std::string(clientIP))) {
                         std::cerr << "Error removing user from blacklist\n"; // TODO: Remove
                     }
@@ -332,3 +328,14 @@ bool commandFound(const std::string message, const std::string command)
     }
     return (cmd == command);
 }
+
+// Removed: 
+/*
+if (userBlacklisted(std::string(clientIP))) 
+{
+    if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1) {
+        std::cerr << "Failed to send answer\n";
+        return NULL;
+    }
+}
+*/
