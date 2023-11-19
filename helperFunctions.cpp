@@ -9,7 +9,7 @@ std::string processMessage(std::string clientRequest, std::string sender)
     std::vector <std::string> dataToBeProcessed;
     for(int i = 0; i < 3; i++) { // SEND[0] recipient[1] subject[2]
         if((pos = clientRequest.find('\n')) == std::string::npos) {
-            std::cerr << "couldnt parse data";
+            std::cerr << "Couldnt parse data";
             return " ";
         }
         dataToBeProcessed.push_back(clientRequest.substr(0, pos));
@@ -112,7 +112,7 @@ bool createDirectory(const std::string recipientName, const std::string director
 {
     if(!fs::create_directory(directoryName))
     {
-       std::cerr << "Couldnt create directory, already exists" << std::endl;
+       std::cerr << "Couldnt create directory/already exists" << std::endl;
     }
     
     if (userExists(recipientName, directoryName)) {
@@ -170,7 +170,6 @@ bool manageBlacklist(const std::string clientIP) // Mutexes in helper backlistUs
     {
         return false;
     }
-    std::cerr << "User Blacklisted\nWait 1 min\n"; // TODO: Remove
     return removeFromBlacklist(clientIP);
 }
 
@@ -194,7 +193,8 @@ bool userBlacklisted(const std::string clientIP)
 {
     // Scan the file for clientIP (https://stackoverflow.com/questions/13996897/is-there-a-way-to-scan-a-txt-file-for-a-word-or-name-in-c)
     typedef std::istream_iterator<std::string> InIt;
-    if (std::find(InIt(std::ifstream("blacklist.txt") >> std::skipws), InIt(), clientIP) != InIt())
+    auto blacklist = InIt(std::ifstream("blacklist.txt") >> std::skipws);
+    if (std::find(blacklist, InIt(), clientIP) != InIt())
     {
         return true;
     }
@@ -221,7 +221,6 @@ bool removeFromBlacklist(const std::string clientIP)
         return false;
 
     // Wait 1 minute before erasing clientIP
-    std::cerr << "Start the wait\n";
     std::this_thread::sleep_for(std::chrono::minutes(1));
     contents.erase(pos, clientIP.length() + 1); // Plus one to delete the new line
     
