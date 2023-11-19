@@ -110,13 +110,13 @@ int main(int argc, char** argv)
                 }
             } else if(cmd == READ) {
                 size_t pos;
-                std::cout << std::string(buffer) << std::endl;//DEBUG
                 std::string response = std::string(buffer).substr(0, (pos = std::string(buffer).find("\n")) == std::string::npos ? 0 : pos + 1);
                 if((strcmp("OK\n", response.data())) != 0)
                 {
                     fprintf(stderr, "<< Server error occured, abort\n");
                     break;
                 }
+                std::cout << response << std::endl;
             }
         }
     } while (cmd != QUIT);

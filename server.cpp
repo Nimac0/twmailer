@@ -238,12 +238,7 @@ void *clientCommunication(void *args)
             returnStr = "OK\n" + returnStr;
             if (returnStr.compare(" ") != 0)
             {
-                /*if (send(*current_socket, "OK\n", 3, 0) == -1)
-                {
-                    std::cerr << "Failed to send answer\n";
-                    return NULL;
-                }*/
-                if (send(*current_socket, returnStr.c_str(), returnStr.size() + 4, 0) == -1)
+                if (send(*current_socket, returnStr.c_str(), returnStr.size() + 1, 0) == -1)
                 {
                     std::cerr << "Failed to send answer\n";
                     return NULL;
