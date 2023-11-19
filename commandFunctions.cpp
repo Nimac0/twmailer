@@ -2,6 +2,7 @@
 #include "ldapClient.h"
 
 pthread_mutex_t loginMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t readMutex = PTHREAD_MUTEX_INITIALIZER;
 
 //LOGIN
 // LDAPClient.authentificateUser RETURN CODES:

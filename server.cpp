@@ -91,7 +91,6 @@ int main(int argc, char** argv)
             break;
         }
         printf("Client connected from %s:%d...\n", inet_ntoa(cliaddress.sin_addr), ntohs(cliaddress.sin_port));
-        // TODO: Pass on the clientIP -> std::string(inet_ntoa(cliaddress.sin_addr))?
         if((pthread_create(&newThread, NULL, clientCommunication, static_cast<void*>(new ThreadArgs{new int(new_socket), std::string(inet_ntoa(cliaddress.sin_addr)), std::string(argv[2])}))) != 0)// makes new thread, new int -> no race conditions bc of overwriting
         {
             perror("thread error");
@@ -115,7 +114,6 @@ int main(int argc, char** argv)
 void *clientCommunication(void *args)
 {
     ThreadArgs *threadArgs = static_cast<ThreadArgs*>(args);
-    // TODO: Check if cast is successful
     int *current_socket = threadArgs->new_client;
     std::string clientIP = threadArgs->clientIP;
     std::string directoryName = threadArgs->directoryName;
@@ -124,9 +122,7 @@ void *clientCommunication(void *args)
     int size;
     std::string *username = new std::string();
     bool loggedIn = false;
-    std::cerr << "new username ptr created" << std::endl;
     pthread_detach(pthread_self());
-    std::cerr << "THREAD STARTED, ID: " << pthread_self() << std::endl;
 
     unsigned int loginAttempts = 0;
 
@@ -162,7 +158,6 @@ void *clientCommunication(void *args)
         trimEnd(&buffer[0], &size);
         std::string message(buffer);
         if (commandFound(message, "LOGIN") && !loggedIn) {
-            // TODO: Disable any recieving until the 1 minute is over
             if (userBlacklisted(std::string(clientIP))) 
             {
                 if (send(*current_socket, "ERR\n", 4, 0) == -1) {
@@ -171,21 +166,16 @@ void *clientCommunication(void *args)
                 }
                 continue;
             }
-            std::cout << "USERADRESS: " << username << std::endl;
             int returnCode = handleLogin(message, username);
-            std::cout << "USERVALUE: " << *username << std::endl; // TODO: Remove
-            std::cerr << "RETURN CODE: " << returnCode << std::endl; // TODO: Remove
             if (returnCode == LDAP_LOGIN_FAILED)
             {
                 loginAttempts++;
-                std::cerr << "N. of Attempts: " << loginAttempts << "\n"; // TODO: Remove
                 if (loginAttempts >= 3) {
-                    if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1) {
+                    if (send(*current_socket, "ERR\n", 4, 0) == -1) {
                         std::cerr << "Failed to send answer\n";
                         return NULL;
                     }
                     if (!manageBlacklist(std::string(clientIP))) {
-                        std::cerr << "Error removing user from blacklist\n"; // TODO: Remove
                     }
                     loginAttempts = 0;
                 }

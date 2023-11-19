@@ -170,7 +170,6 @@ bool manageBlacklist(const std::string clientIP) // Mutexes in helper backlistUs
     {
         return false;
     }
-    std::cerr << "User Blacklisted\nWait 1 min\n"; // TODO: Remove
     return removeFromBlacklist(clientIP);
 }
 
@@ -194,7 +193,8 @@ bool userBlacklisted(const std::string clientIP)
 {
     // Scan the file for clientIP (https://stackoverflow.com/questions/13996897/is-there-a-way-to-scan-a-txt-file-for-a-word-or-name-in-c)
     typedef std::istream_iterator<std::string> InIt;
-    if (std::find(InIt(std::ifstream("blacklist.txt") >> std::skipws), InIt(), clientIP) != InIt())
+    auto blacklist = std::ifstream("blacklist.txt") >> std::skipws;
+    if (std::find(InIt(blacklist), InIt(), clientIP) != InIt())
     {
         return true;
     }
@@ -209,7 +209,7 @@ bool removeFromBlacklist(const std::string clientIP)
     if (!inFile.is_open())
     {
         pthread_mutex_unlock(&blacklistMutex);
-        return false; // TODO: Change --> if error opening file, user gets to keep trying...
+        return false;
     }
     std::string contents(std::istreambuf_iterator<char>{inFile}, {});
     inFile.close();
