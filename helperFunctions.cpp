@@ -112,7 +112,7 @@ bool createDirectory(const std::string recipientName, const std::string director
 {
     if(!fs::create_directory(directoryName))
     {
-       std::cerr << "couldnt create directory/already exists" << std::endl;
+       std::cerr << "Couldnt create directory, already exists" << std::endl;
     }
     
     if (userExists(recipientName, directoryName)) {
@@ -141,7 +141,9 @@ bool createTextFile(fs::path path, const std::string content)
 
     // Error opening file
     if (!textFile.is_open())
+    {
         return false;
+    }   
     textFile << content;
     return true;
 }
@@ -149,11 +151,15 @@ bool createTextFile(fs::path path, const std::string content)
 bool createBlacklist()
 {
     if (fs::exists("blacklist.txt"))
+    {
         return true;
+    }
     std::ofstream textFile("blacklist.txt");
     
     if (!textFile.is_open())
+    {
         return false;
+    }
     return true;
 }
 
@@ -188,8 +194,7 @@ bool userBlacklisted(const std::string clientIP)
 {
     // Scan the file for clientIP (https://stackoverflow.com/questions/13996897/is-there-a-way-to-scan-a-txt-file-for-a-word-or-name-in-c)
     typedef std::istream_iterator<std::string> InIt;
-    auto blacklist = std::ifstream("blacklist.txt") >> std::skipws;
-    if (std::find(InIt(blacklist), InIt(), clientIP) != InIt())
+    if (std::find(InIt(std::ifstream("blacklist.txt") >> std::skipws), InIt(), clientIP) != InIt())
     {
         return true;
     }
@@ -203,6 +208,7 @@ bool removeFromBlacklist(const std::string clientIP)
     std::ifstream inFile("blacklist.txt");
     if (!inFile.is_open())
     {
+        pthread_mutex_unlock(&blacklistMutex);
         return false; // TODO: Change --> if error opening file, user gets to keep trying...
     }
     std::string contents(std::istreambuf_iterator<char>{inFile}, {});
@@ -215,6 +221,7 @@ bool removeFromBlacklist(const std::string clientIP)
         return false;
 
     // Wait 1 minute before erasing clientIP
+    std::cerr << "Start the wait\n";
     std::this_thread::sleep_for(std::chrono::minutes(1));
     contents.erase(pos, clientIP.length() + 1); // Plus one to delete the new line
     

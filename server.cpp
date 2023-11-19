@@ -169,7 +169,6 @@ void *clientCommunication(void *args)
                     std::cerr << "Failed to send answer\n";
                     return NULL;
                 }
-
                 continue;
             }
             std::cout << "USERADRESS: " << username << std::endl;
@@ -181,7 +180,6 @@ void *clientCommunication(void *args)
                 loginAttempts++;
                 std::cerr << "N. of Attempts: " << loginAttempts << "\n"; // TODO: Remove
                 if (loginAttempts >= 3) {
-                    std::cerr << "In three attempts if\n"; // TODO: Remove
                     if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1) {
                         std::cerr << "Failed to send answer\n";
                         return NULL;

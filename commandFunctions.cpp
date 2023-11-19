@@ -13,10 +13,10 @@ int handleLogin(std::string message, std::string *username)
     LDAPClient ldapClient;
     std::vector<std::string> credentials;
     pthread_mutex_lock(&loginMutex);
-    if (!getCredentials(message, credentials))
-    {
-        return -1;
+    if (!getCredentials(message, credentials)) // Also checks if input is valid
+    { 
         pthread_mutex_unlock(&loginMutex);
+        return -1;
     }
     int returnCode = ldapClient.authenticateUser(credentials[0], credentials[1]);
     if (returnCode == 0)

@@ -17,7 +17,8 @@ int main(int argc, char** argv)
     int create_socket;
     char buffer[BUF];
     struct sockaddr_in address;
-    int port = std::stoi(argv[2]);
+    const int port = std::stoi(argv[2]);
+    const std::string ip = argv[1];
     cmd cmd = DEFAULT;
 
     if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -28,8 +29,8 @@ int main(int argc, char** argv)
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
+    // address.sin_addr.s_addr = inet_addr(ip.c_str());
     inet_aton(argv[1], &address.sin_addr);
-
     if (connect(create_socket, (struct sockaddr *)&address, sizeof(address)) == -1) {
         perror("Connect error - no server available");
         return EXIT_FAILURE;
@@ -89,7 +90,7 @@ int main(int argc, char** argv)
             buffer[size] = '\0';
             printf("<< %s", buffer);
 
-            if((strcmp("ERR\n", buffer)) == 0) {
+            if((strcmp("ERR\n", buffer)) == 0 || (strcmp("ERR. Please wait one minute before you try again\n", buffer)) == 0) {
                 continue;
             }
 
