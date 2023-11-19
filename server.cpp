@@ -185,8 +185,10 @@ void *clientCommunication(void *args)
             if (returnCode == LDAP_LOGIN_FAILED)
             {
                 loginAttempts++;
-                if (loginAttempts >= 3) {
-                    if (send(*current_socket, "ERR\n", 4, 0) == -1) {
+                if (loginAttempts >= 3)
+                {
+                    if (send(*current_socket, "ERR. Please wait one minute before you try again\n", 49, 0) == -1)
+                    {
                         std::cerr << "Failed to send answer\n";
                         return NULL;
                     }
@@ -233,14 +235,15 @@ void *clientCommunication(void *args)
         else if (commandFound(message, "READ") && loggedIn)
         {
             std::string returnStr = handleRead(message, *username, directoryName);
+            returnStr = "OK\n" + returnStr;
             if (returnStr.compare(" ") != 0)
             {
-                if (send(*current_socket, "OK\n", 3, 0) == -1)
+                /*if (send(*current_socket, "OK\n", 3, 0) == -1)
                 {
                     std::cerr << "Failed to send answer\n";
                     return NULL;
-                }
-                if (send(*current_socket, returnStr.c_str(), returnStr.size() + 1, 0) == -1)
+                }*/
+                if (send(*current_socket, returnStr.c_str(), returnStr.size() + 4, 0) == -1)
                 {
                     std::cerr << "Failed to send answer\n";
                     return NULL;

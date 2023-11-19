@@ -101,7 +101,6 @@ int main(int argc, char** argv)
                     fprintf(stderr, "<< Server error occured, abort\n");
                     break;
                 }
-                // 
             }
             else if(cmd == SEND || cmd == DEL) {
                 if((strcmp("OK\n", buffer)) != 0)
@@ -111,6 +110,7 @@ int main(int argc, char** argv)
                 }
             } else if(cmd == READ) {
                 size_t pos;
+                std::cout << std::string(buffer) << std::endl;//DEBUG
                 std::string response = std::string(buffer).substr(0, (pos = std::string(buffer).find("\n")) == std::string::npos ? 0 : pos + 1);
                 if((strcmp("OK\n", response.data())) != 0)
                 {
